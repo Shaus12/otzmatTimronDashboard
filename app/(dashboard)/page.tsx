@@ -9,7 +9,7 @@ import { OpenTasksPanel } from "@/components/home/open-tasks-panel";
 import { QuickLinks } from "@/components/home/quick-links";
 
 export default async function HomePage() {
-  const store = getDataStore();
+  const store = await getDataStore();
   const [kpis, systems, tasks] = await Promise.all([
     store.getHomeKpis(),
     store.getSystems(),
@@ -21,7 +21,9 @@ export default async function HomePage() {
       <PageHeading
         title="מבט אחד. הכול בשליטה."
         description={pageDescriptions.home}
-        badge="נתוני דמו"
+        badge={
+          process.env.NEXT_PUBLIC_SUPABASE_URL ? "מחובר ל־Supabase" : "נתוני דמו"
+        }
       />
 
       <KpiCards
@@ -66,10 +68,10 @@ export default async function HomePage() {
         <aside className="right-column">
           <OpenTasksPanel tasks={tasks} />
           <section className="setup-note">
-            <h3>שכבת נתונים מוכנה להחלפה</h3>
+            <h3>שכבת נתונים</h3>
             <p>
-              כל המסכים קוראים דרך ממשק DataStore. כרגע הנתונים מדומים — בהמשך
-              ניתן להחליף ל־Supabase בלי לשנות את ה־UI.
+              כל המסכים קוראים דרך ממשק DataStore. עם משתני הסביבה של Supabase
+              הנתונים מגיעים מהמסד האמיתי לפי הרשאות הפרופיל.
             </p>
           </section>
         </aside>

@@ -1,20 +1,14 @@
+import { getCurrentProfile } from "@/lib/auth/profile";
+import { canWrite } from "@/lib/auth/permissions";
 import { getDataStore } from "@/lib/data";
-import {
-  employeeStatusLabels,
-  formatDate,
-  navLabels,
-  pageDescriptions,
-} from "@/lib/labels";
+import { navLabels, pageDescriptions } from "@/lib/labels";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeading } from "@/components/layout/page-heading";
-import {
-  EmptyState,
-  RecordsTable,
-  StatusBadge,
-} from "@/components/records/records-table";
+import { EmployeesCrud } from "@/components/records/employees-crud";
 
 export default async function EmployeesPage() {
-  const store = getDataStore();
+  const store = await getDataStore();
+  const profile = await getCurrentProfile();
   const [employees, vehicles, assignments] = await Promise.all([
     store.getEmployees(),
     store.getVehicles(),
@@ -23,10 +17,21 @@ export default async function EmployeesPage() {
 
   const currentByEmployee = new Map(
     assignments
-      .filter((a) => a.endedAt === null)
+      .filter((a) => a.endDate === null)
       .map((a) => [a.employeeId, a.vehicleId]),
   );
   const vehicleById = new Map(vehicles.map((v) => [v.id, v]));
+
+  const rows = employees.map((e) => {
+    const vehicleId = currentByEmployee.get(e.id);
+    const vehicle = vehicleId ? vehicleById.get(vehicleId) : null;
+    return {
+      ...e,
+      assignedVehicle: vehicle
+        ? `${vehicle.make} ${vehicle.model} · ${vehicle.plate}`
+        : "ללא שיוך",
+    };
+  });
 
   return (
     <PageShell section={navLabels.employees}>
@@ -34,54 +39,10 @@ export default async function EmployeesPage() {
         title={navLabels.employees}
         description={pageDescriptions.employees}
       />
-      {employees.length ? (
-        <RecordsTable
-          rows={employees}
-          columns={[
-            {
-              key: "name",
-              header: "שם עובד",
-              className: "record-name",
-              cell: (e) => e.fullName,
-            },
-            {
-              key: "detail",
-              header: "פרטים",
-              className: "record-detail",
-              cell: (e) => `${e.role} · ${e.email}`,
-            },
-            {
-              key: "vehicle",
-              header: "רכב משויך",
-              cell: (e) => {
-                const vehicleId = currentByEmployee.get(e.id);
-                const vehicle = vehicleId ? vehicleById.get(vehicleId) : null;
-                return vehicle
-                  ? `${vehicle.make} ${vehicle.model} · ${vehicle.plate}`
-                  : "ללא שיוך";
-              },
-            },
-            {
-              key: "status",
-              header: "סטטוס",
-              cell: (e) => (
-                <StatusBadge label={employeeStatusLabels[e.status]} />
-              ),
-            },
-            {
-              key: "due",
-              header: "מועד למעקב",
-              className: "date-cell",
-              cell: (e) => formatDate(e.leaveUntil),
-            },
-          ]}
-        />
-      ) : (
-        <EmptyState
-          title="אין עובדים"
-          description="כשיוגדר מקור נתונים, יופיעו כאן רשומות העובדים."
-        />
-      )}
+      <EmployeesCrud
+        rows={rows}
+        canWrite={canWrite(profile?.role, "employees")}
+      />
     </PageShell>
   );
 }

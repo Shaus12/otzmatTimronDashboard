@@ -12,6 +12,7 @@ import {
   ReceiptText,
   ListChecks,
   ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,6 +25,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { navLabels } from "@/lib/labels";
+import { roleLabels } from "@/lib/auth/permissions";
+import type { Profile } from "@/lib/auth/profile";
+import { signOut } from "@/app/login/actions";
 
 const primaryLinks = [
   { href: "/", label: navLabels.home, icon: LayoutDashboard },
@@ -39,7 +43,7 @@ const companyLinks = [
   { href: "/fines", label: navLabels.fines, icon: ReceiptText },
 ] as const;
 
-export function AppSidebar() {
+export function AppSidebar({ profile }: { profile: Profile | null }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
 
@@ -47,6 +51,8 @@ export function AppSidebar() {
     if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
   }
+
+  const initials = profile?.fullName?.slice(0, 2) || "עת";
 
   return (
     <Sidebar side="right" className="company-sidebar">
@@ -105,19 +111,29 @@ export function AppSidebar() {
           <div>
             <strong>סביבת עבודה</strong>
             <p>
-              המערכות והמעקב שלך,
+              ההרשאות נקבעות לפי תפקיד המשתמש
               <br />
-              מרוכזים במקום אחד.
+              בפרופיל המחובר.
             </p>
           </div>
         </div>
         <div className="profile">
-          <span>עת</span>
+          <span>{initials}</span>
           <div>
-            <b>ניהול החברה</b>
-            <small>עוצמת התמרון</small>
+            <b>{profile?.fullName ?? "מצב דמו"}</b>
+            <small>
+              {profile ? roleLabels[profile.role] : "ללא התחברות"}
+            </small>
           </div>
         </div>
+        {profile ? (
+          <form action={signOut} className="signout-form">
+            <button type="submit">
+              <LogOut size={15} />
+              יציאה
+            </button>
+          </form>
+        ) : null}
       </SidebarFooter>
     </Sidebar>
   );

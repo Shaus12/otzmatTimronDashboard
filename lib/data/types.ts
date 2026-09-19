@@ -1,4 +1,6 @@
-/** Shared domain types for the dashboard data layer. */
+/** Shared domain types aligned to the live Supabase schema. */
+
+export type AppRole = "admin" | "operations" | "accounting" | "viewer";
 
 export type EmployeeStatus = "active" | "on_leave" | "inactive";
 export type VehicleStatus = "active" | "in_service" | "inactive";
@@ -6,11 +8,7 @@ export type FineStatus = "open" | "in_progress" | "paid" | "appealed";
 export type LegalStatus = "open" | "in_progress" | "closed";
 export type PropertyStatus = "active" | "in_progress" | "inactive";
 export type TaskStatus = "open" | "in_progress" | "done";
-export type SystemCategory =
-  | "finance"
-  | "hr"
-  | "fleet"
-  | "comms";
+export type SystemCategory = "finance" | "hr" | "fleet" | "comms";
 export type ExpenseCategory =
   | "fuel"
   | "tolls"
@@ -18,53 +16,61 @@ export type ExpenseCategory =
   | "office"
   | "other";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
-export type PaymentStatus = "pending" | "completed" | "failed";
-export type AuditAction = "create" | "update" | "delete" | "assign" | "status_change";
+export type AuditAction =
+  | "create"
+  | "update"
+  | "delete"
+  | "assign"
+  | "status_change";
+
+/** Lightweight profile row for assignee pickers (legal/tasks). */
+export interface ProfileOption {
+  id: string;
+  fullName: string;
+}
 
 export interface Employee {
   id: string;
   fullName: string;
-  role: string;
   email: string;
+  jobTitle: string;
   phone: string;
   status: EmployeeStatus;
-  leaveUntil: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Vehicle {
   id: string;
+  plate: string;
   make: string;
   model: string;
-  plate: string;
   year: number;
   notes: string;
   status: VehicleStatus;
-  nextServiceDue: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-/** Historical assignment of a vehicle to an employee. `endedAt` null = current. */
+/** Historical assignment. `endDate` null = current. */
 export interface VehicleAssignment {
   id: string;
   vehicleId: string;
   employeeId: string;
-  startedAt: string;
-  endedAt: string | null;
-  note: string;
+  startDate: string;
+  endDate: string | null;
+  createdAt: string;
 }
 
 export interface Fine {
   id: string;
   title: string;
   description: string;
-  amountIls: number;
+  amount: number;
   status: FineStatus;
   dueDate: string | null;
   vehicleId: string | null;
-  assigneeEmployeeId: string | null;
+  employeeId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -76,7 +82,8 @@ export interface LegalCase {
   caseNumber: string;
   status: LegalStatus;
   dueDate: string | null;
-  assigneeName: string;
+  /** Profile id (profiles.id). */
+  assignedTo: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,9 +92,8 @@ export interface Property {
   id: string;
   name: string;
   address: string;
-  description: string;
+  details: string;
   status: PropertyStatus;
-  followUpDate: string | null;
   contactName: string;
   createdAt: string;
   updatedAt: string;
@@ -99,7 +105,7 @@ export interface Task {
   description: string;
   status: TaskStatus;
   dueDate: string | null;
-  assigneeEmployeeId: string | null;
+  assignedTo: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -116,35 +122,33 @@ export interface System {
 
 export interface Expense {
   id: string;
-  title: string;
   category: ExpenseCategory;
-  amountIls: number;
-  incurredOn: string;
+  amount: number;
   vehicleId: string | null;
-  note: string;
+  description: string;
+  vendor: string;
+  employeeId: string | null;
+  status: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Invoice {
   id: string;
-  vendor: string;
-  description: string;
-  amountIls: number;
   status: InvoiceStatus;
-  issuedOn: string;
+  amount: number;
   dueDate: string | null;
+  clientName: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Payment {
   id: string;
-  description: string;
-  amountIls: number;
-  status: PaymentStatus;
-  paidOn: string | null;
+  amount: number;
   invoiceId: string | null;
+  paidAt: string | null;
+  method: string;
   createdAt: string;
   updatedAt: string;
 }

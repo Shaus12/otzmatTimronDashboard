@@ -1,14 +1,22 @@
 import { MockDataStore } from "./mock-store";
+import { SupabaseDataStore } from "./supabase-store";
 import type { DataStore } from "./store";
 
-let store: DataStore | null = null;
+function hasSupabaseEnv(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+}
 
-/** App-wide data access. Today: MockDataStore. Later: SupabaseDataStore. */
-export function getDataStore(): DataStore {
-  if (!store) {
-    store = new MockDataStore();
+/** Prefer Supabase when env is configured; otherwise fall back to mock data. */
+export async function getDataStore(): Promise<DataStore> {
+  if (hasSupabaseEnv()) {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    return new SupabaseDataStore(supabase);
   }
-  return store;
+  return new MockDataStore();
 }
 
 export type { DataStore } from "./store";

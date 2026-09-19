@@ -1,20 +1,26 @@
+import { getCurrentProfile } from "@/lib/auth/profile";
+import { canWrite } from "@/lib/auth/permissions";
 import { getDataStore } from "@/lib/data";
-import {
-  formatDate,
-  legalStatusLabels,
-  navLabels,
-  pageDescriptions,
-} from "@/lib/labels";
+import { navLabels, pageDescriptions } from "@/lib/labels";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeading } from "@/components/layout/page-heading";
-import {
-  EmptyState,
-  RecordsTable,
-  StatusBadge,
-} from "@/components/records/records-table";
+import { LegalCrud } from "@/components/records/legal-crud";
 
 export default async function LegalPage() {
-  const cases = await getDataStore().getLegalCases();
+  const store = await getDataStore();
+  const profile = await getCurrentProfile();
+  const [cases, profiles] = await Promise.all([
+    store.getLegalCases(),
+    store.getProfiles(),
+  ]);
+  const profileById = new Map(profiles.map((p) => [p.id, p]));
+
+  const rows = cases.map((c) => ({
+    ...c,
+    assigneeName: c.assignedTo
+      ? (profileById.get(c.assignedTo)?.fullName ?? "—")
+      : "—",
+  }));
 
   return (
     <PageShell section={navLabels.legal}>
@@ -22,46 +28,11 @@ export default async function LegalPage() {
         title={navLabels.legal}
         description={pageDescriptions.legal}
       />
-      {cases.length ? (
-        <RecordsTable
-          rows={cases}
-          columns={[
-            {
-              key: "name",
-              header: "שם / נושא",
-              className: "record-name",
-              cell: (c) => `${c.title} · ${c.caseNumber}`,
-            },
-            {
-              key: "detail",
-              header: "פרטים",
-              className: "record-detail",
-              cell: (c) => c.description,
-            },
-            {
-              key: "assignee",
-              header: "אחראי / איש קשר",
-              cell: (c) => c.assigneeName || "—",
-            },
-            {
-              key: "status",
-              header: "סטטוס",
-              cell: (c) => <StatusBadge label={legalStatusLabels[c.status]} />,
-            },
-            {
-              key: "due",
-              header: "מועד למעקב",
-              className: "date-cell",
-              cell: (c) => formatDate(c.dueDate),
-            },
-          ]}
-        />
-      ) : (
-        <EmptyState
-          title="אין תיקים"
-          description="כשיוגדר מקור נתונים, יופיעו כאן תיקים משפטיים."
-        />
-      )}
+      <LegalCrud
+        rows={rows}
+        profiles={profiles}
+        canWrite={canWrite(profile?.role, "legal")}
+      />
     </PageShell>
   );
 }

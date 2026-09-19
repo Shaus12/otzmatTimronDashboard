@@ -1,20 +1,15 @@
+import { getCurrentProfile } from "@/lib/auth/profile";
+import { canWrite } from "@/lib/auth/permissions";
 import { getDataStore } from "@/lib/data";
-import {
-  formatDate,
-  navLabels,
-  pageDescriptions,
-  propertyStatusLabels,
-} from "@/lib/labels";
+import { navLabels, pageDescriptions } from "@/lib/labels";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeading } from "@/components/layout/page-heading";
-import {
-  EmptyState,
-  RecordsTable,
-  StatusBadge,
-} from "@/components/records/records-table";
+import { PropertiesCrud } from "@/components/records/properties-crud";
 
 export default async function PropertiesPage() {
-  const properties = await getDataStore().getProperties();
+  const store = await getDataStore();
+  const profile = await getCurrentProfile();
+  const properties = await store.getProperties();
 
   return (
     <PageShell section={navLabels.properties}>
@@ -22,48 +17,10 @@ export default async function PropertiesPage() {
         title={navLabels.properties}
         description={pageDescriptions.properties}
       />
-      {properties.length ? (
-        <RecordsTable
-          rows={properties}
-          columns={[
-            {
-              key: "name",
-              header: "שם / נושא",
-              className: "record-name",
-              cell: (p) => p.name,
-            },
-            {
-              key: "detail",
-              header: "פרטים",
-              className: "record-detail",
-              cell: (p) => `${p.address} · ${p.description}`,
-            },
-            {
-              key: "assignee",
-              header: "אחראי / איש קשר",
-              cell: (p) => p.contactName || "—",
-            },
-            {
-              key: "status",
-              header: "סטטוס",
-              cell: (p) => (
-                <StatusBadge label={propertyStatusLabels[p.status]} />
-              ),
-            },
-            {
-              key: "due",
-              header: "מועד למעקב",
-              className: "date-cell",
-              cell: (p) => formatDate(p.followUpDate),
-            },
-          ]}
-        />
-      ) : (
-        <EmptyState
-          title="אין נכסים"
-          description="כשיוגדר מקור נתונים, יופיעו כאן דירות ונכסים."
-        />
-      )}
+      <PropertiesCrud
+        rows={properties}
+        canWrite={canWrite(profile?.role, "properties")}
+      />
     </PageShell>
   );
 }

@@ -5,12 +5,23 @@ Hebrew RTL operations dashboard for Otzmat Timron. Built with **Next.js App Rout
 ## Stack
 
 - Next.js 15 (App Router) + React 19 + TypeScript
-- Tailwind CSS 4 + a small set of shadcn/ui components
-- In-memory **MockDataStore** behind a `DataStore` interface (no database yet)
+- Tailwind CSS 4 + shadcn/ui primitives
+- Supabase Auth + Postgres via `DataStore` (MockDataStore fallback without env)
 
 ## Prerequisites
 
 - Node.js 20+ (recommended 22+)
+
+## Environment
+
+Copy `.env.local.example` to `.env.local` and fill:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+Without these variables the app runs against `MockDataStore` and skips the auth gate.
 
 ## Run locally
 
@@ -19,45 +30,29 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Unauthenticated users are redirected to `/login`.
 
 ```bash
-npm run build   # production build
-npm run start   # serve the build
+npm run build
+npm run start
 npm run lint
 ```
 
-## Routes
+## Auth & roles
 
-| Path | Content |
-|------|---------|
-| `/` | Home KPIs + featured systems + open tasks |
-| `/systems` | System directory (links only) |
-| `/employees` | Employees table |
-| `/vehicles` | Vehicles + current assignment |
-| `/properties` | Properties |
-| `/legal` | Legal cases |
-| `/fines` | Fines / fees |
-| `/tasks` | Tasks |
+- Email/password sign-in against Supabase Auth (`/login`)
+- Profile (`full_name`, `role`) loaded from `profiles`
+- Roles: `admin` | `operations` | `accounting` | `viewer`
+- CRUD UI is gated by role (viewers are read-only)
+- Users are created manually in the Supabase dashboard (no signup page)
 
 ## Data layer
 
-All pages read through `getDataStore()` from `lib/data`:
+Pages use `await getDataStore()`:
 
-- `lib/data/types.ts` — domain types
-- `lib/data/store.ts` — `DataStore` interface (read methods)
-- `lib/data/mock-store.ts` — fake demo data
-- `lib/data/system-catalog.ts` — company systems seed (from the previous catalog)
-
-To swap in Supabase later: implement `DataStore` and return it from `getDataStore()`.
+- `SupabaseDataStore` when env is set (soft-delete via `deleted_at`, vehicle assignment history)
+- `MockDataStore` otherwise
 
 ## Deploy (Vercel)
 
-Connect the repo to Vercel. Default Next.js settings are enough — no env vars required for the mock store.
-
-## Out of scope (for now)
-
-- Auth / roles
-- CRUD forms
-- Live integrations (Gmail, Rivhit, Priority, etc.)
-- Database
+Set the two `NEXT_PUBLIC_SUPABASE_*` env vars in the project settings.
