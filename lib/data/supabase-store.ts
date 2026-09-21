@@ -28,6 +28,7 @@ import type {
   Vehicle,
   VehicleAssignment,
 } from "./types";
+import { throwDbError, toUserFacingError } from "@/lib/errors";
 
 type Row = Record<string, unknown>;
 
@@ -44,8 +45,8 @@ const SOFT_DELETE_TABLES = new Set([
 ]);
 
 function requireData<T>(data: T | null, error: { message: string } | null): T {
-  if (error) throw new Error(error.message);
-  if (data == null) throw new Error("No data returned");
+  if (error) throwDbError(error);
+  if (data == null) throw new Error(toUserFacingError("No data returned"));
   return data;
 }
 
@@ -213,12 +214,14 @@ function mapSystem(row: Row): System {
     description: String(row.description ?? ""),
     category: row.category as System["category"],
     url: (row.url as string | null) ?? null,
+    adapterKey: (row.adapter_key as string | null) ?? null,
     createdAt: String(row.created_at ?? ""),
     updatedAt: String(row.updated_at ?? ""),
   };
 }
 
 function systemRow(input: SystemInput): Row {
+  // adapter_key is seed/migration-owned — never written from CRUD.
   return {
     name: input.name,
     description: input.description,
@@ -324,7 +327,7 @@ export class SupabaseDataStore implements DataStore {
       .from("profiles")
       .select("id, full_name")
       .order("full_name");
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map((row) => ({
       id: String(row.id),
       fullName: String(row.full_name ?? ""),
@@ -333,25 +336,25 @@ export class SupabaseDataStore implements DataStore {
 
   private async softDelete(table: string, id: string): Promise<void> {
     if (!SOFT_DELETE_TABLES.has(table)) {
-      throw new Error(`Table ${table} does not support soft delete`);
+      throw new Error("לא ניתן למחוק רשומה מטבלה זו.");
     }
     const { error } = await this.supabase
       .from(table)
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
       .is("deleted_at", null);
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
   }
 
   async getEmployees(): Promise<Employee[]> {
     const { data, error } = await this.list("employees").order("full_name");
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapEmployee);
   }
 
   async getEmployee(id: string): Promise<Employee | null> {
     const { data, error } = await this.list("employees").eq("id", id).maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return data ? mapEmployee(data) : null;
   }
 
@@ -381,13 +384,13 @@ export class SupabaseDataStore implements DataStore {
 
   async getVehicles(): Promise<Vehicle[]> {
     const { data, error } = await this.list("vehicles").order("plate");
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapVehicle);
   }
 
   async getVehicle(id: string): Promise<Vehicle | null> {
     const { data, error } = await this.list("vehicles").eq("id", id).maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return data ? mapVehicle(data) : null;
   }
 
@@ -422,7 +425,7 @@ export class SupabaseDataStore implements DataStore {
       .order("start_date", { ascending: false });
     if (vehicleId) query = query.eq("vehicle_id", vehicleId);
     const { data, error } = await query;
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapAssignment);
   }
 
@@ -435,7 +438,7 @@ export class SupabaseDataStore implements DataStore {
       .eq("vehicle_id", vehicleId)
       .is("end_date", null)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return data ? mapAssignment(data) : null;
   }
 
@@ -449,7 +452,7 @@ export class SupabaseDataStore implements DataStore {
       .update({ end_date: today })
       .eq("vehicle_id", vehicleId)
       .is("end_date", null);
-    if (endError) throw new Error(endError.message);
+    if (endError) throwDbError(endError);
 
     if (!employeeId) return;
 
@@ -461,7 +464,7 @@ export class SupabaseDataStore implements DataStore {
         start_date: today,
         end_date: null,
       });
-    if (insertError) throw new Error(insertError.message);
+    if (insertError) throwDbError(insertError);
   }
 
   async getFines(): Promise<Fine[]> {
@@ -469,13 +472,13 @@ export class SupabaseDataStore implements DataStore {
       ascending: true,
       nullsFirst: false,
     });
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapFine);
   }
 
   async getFine(id: string): Promise<Fine | null> {
     const { data, error } = await this.list("fines").eq("id", id).maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return data ? mapFine(data) : null;
   }
 
@@ -508,7 +511,7 @@ export class SupabaseDataStore implements DataStore {
       ascending: true,
       nullsFirst: false,
     });
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapLegal);
   }
 
@@ -516,7 +519,7 @@ export class SupabaseDataStore implements DataStore {
     const { data, error } = await this.list("legal_cases")
       .eq("id", id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return data ? mapLegal(data) : null;
   }
 
@@ -546,7 +549,7 @@ export class SupabaseDataStore implements DataStore {
 
   async getProperties(): Promise<Property[]> {
     const { data, error } = await this.list("properties").order("address");
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapProperty);
   }
 
@@ -554,7 +557,7 @@ export class SupabaseDataStore implements DataStore {
     const { data, error } = await this.list("properties")
       .eq("id", id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return data ? mapProperty(data) : null;
   }
 
@@ -587,13 +590,13 @@ export class SupabaseDataStore implements DataStore {
       ascending: true,
       nullsFirst: false,
     });
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapTask);
   }
 
   async getTask(id: string): Promise<Task | null> {
     const { data, error } = await this.list("tasks").eq("id", id).maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return data ? mapTask(data) : null;
   }
 
@@ -623,13 +626,13 @@ export class SupabaseDataStore implements DataStore {
 
   async getSystems(): Promise<System[]> {
     const { data, error } = await this.list("systems").order("name");
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapSystem);
   }
 
   async getSystem(id: string): Promise<System | null> {
     const { data, error } = await this.list("systems").eq("id", id).maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return data ? mapSystem(data) : null;
   }
 
@@ -661,7 +664,7 @@ export class SupabaseDataStore implements DataStore {
     const { data, error } = await this.list("expenses").order("created_at", {
       ascending: false,
     });
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapExpense);
   }
 
@@ -693,7 +696,7 @@ export class SupabaseDataStore implements DataStore {
     const { data, error } = await this.list("invoices").order("created_at", {
       ascending: false,
     });
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapInvoice);
   }
 
@@ -718,14 +721,14 @@ export class SupabaseDataStore implements DataStore {
 
   async deleteInvoice(id: string): Promise<void> {
     const { error } = await this.supabase.from("invoices").delete().eq("id", id);
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
   }
 
   async getPayments(): Promise<Payment[]> {
     const { data, error } = await this.list("payments").order("created_at", {
       ascending: false,
     });
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapPayment);
   }
 
@@ -759,7 +762,7 @@ export class SupabaseDataStore implements DataStore {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(100);
-    if (error) throw new Error(error.message);
+    if (error) throwDbError(error);
     return (data ?? []).map(mapAudit);
   }
 

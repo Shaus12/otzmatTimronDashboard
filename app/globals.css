@@ -501,6 +501,7 @@ svg {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  cursor: pointer;
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -616,6 +617,70 @@ svg {
 
 .link-state.missing {
   color: #ab7a32;
+}
+
+.adapter-status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.adapter-status-badge.state-mock {
+  background: #eef2f5;
+  color: #5b717a;
+}
+
+.adapter-status-badge.state-connected {
+  background: #e7f6ec;
+  color: #1f7a45;
+}
+
+.adapter-status-badge.state-error {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.adapter-status-badge.state-missing_access {
+  background: #fff4e5;
+  color: #9a6700;
+}
+
+.adapter-status-badge.state-unrecognized {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.adapter-status-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.adapter-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #4d646c;
+}
+
+.adapter-status-row strong {
+  color: #243840;
+  font-weight: 600;
+}
+
+.adapter-status-message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #6a7f87;
+  background: #f6f8f9;
+  border-radius: 8px;
+  padding: 12px 14px;
 }
 
 .operations-strip {

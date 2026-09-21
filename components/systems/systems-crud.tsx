@@ -12,6 +12,7 @@ import {
   deleteSystemAction,
   saveSystemAction,
 } from "@/app/(dashboard)/actions";
+import type { AdapterStatus } from "@/lib/adapters/types";
 import type { System, SystemCategory } from "@/lib/data/types";
 import { systemCategoryLabels } from "@/lib/labels";
 
@@ -19,9 +20,11 @@ const ALL = "all";
 
 export function SystemsCrud({
   systems,
+  statuses,
   canWrite,
 }: {
   systems: System[];
+  statuses: Record<string, AdapterStatus>;
   canWrite: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -58,6 +61,7 @@ export function SystemsCrud({
           description: "",
           category: "finance" as SystemCategory,
           url: null,
+          adapterKey: null,
           createdAt: "",
           updatedAt: "",
         }) satisfies System
@@ -82,6 +86,20 @@ export function SystemsCrud({
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               />
             </label>
+            {draft.adapterKey ? (
+              <label>
+                מפתח מתאם
+                <Input
+                  dir="ltr"
+                  readOnly
+                  value={draft.adapterKey}
+                  className="opacity-80"
+                />
+                <small className="field-help">
+                  מפתח יציב לקישור מתאם מקור — לא ניתן לעריכה.
+                </small>
+              </label>
+            ) : null}
             <label>
               תיאור
               <Textarea
@@ -158,7 +176,7 @@ export function SystemsCrud({
 
           {filtered.length ? (
             <div className="systems-manage">
-              <SystemsGrid systems={filtered} />
+              <SystemsGrid systems={filtered} statuses={statuses} />
               {write ? (
                 <div className="systems-edit-list">
                   {filtered.map((system) => (

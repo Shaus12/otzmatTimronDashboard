@@ -12,6 +12,12 @@ export type WritableEntity =
   | "invoices"
   | "payments";
 
+/**
+ * UI + server-action write gate. Must stay aligned with Postgres RLS.
+ * legal / properties / tasks / systems: admin only (RLS).
+ * employees / vehicles / fines: admin + operations.
+ * accounting: finance entities when those screens exist (not fines).
+ */
 const writeMatrix: Record<AppRole, ReadonlySet<WritableEntity>> = {
   admin: new Set([
     "employees",
@@ -25,26 +31,15 @@ const writeMatrix: Record<AppRole, ReadonlySet<WritableEntity>> = {
     "invoices",
     "payments",
   ]),
-  operations: new Set([
-    "employees",
-    "vehicles",
-    "fines",
-    "legal",
-    "properties",
-    "tasks",
-    "systems",
-  ]),
-  accounting: new Set([
-    "fines",
-    "expenses",
-    "invoices",
-    "payments",
-    "tasks",
-  ]),
+  operations: new Set(["employees", "vehicles", "fines"]),
+  accounting: new Set(["expenses", "invoices", "payments"]),
   viewer: new Set(),
 };
 
-export function canWrite(role: AppRole | null | undefined, entity: WritableEntity): boolean {
+export function canWrite(
+  role: AppRole | null | undefined,
+  entity: WritableEntity,
+): boolean {
   if (!role) return false;
   return writeMatrix[role].has(entity);
 }

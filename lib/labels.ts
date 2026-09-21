@@ -74,6 +74,14 @@ export const taskStatusLabels: Record<TaskStatus, string> = {
   done: "הושלם",
 };
 
+export const adapterStatusLabels = {
+  mock: "מדומה",
+  connected: "מחובר",
+  error: "שגיאה",
+  missing_access: "חסרה גישה",
+  unrecognized: "לא מזוהה",
+} as const;
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "ללא תאריך";
   const date = new Date(`${value}T12:00:00`);

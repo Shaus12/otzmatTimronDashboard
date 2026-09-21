@@ -116,6 +116,8 @@ export interface System {
   description: string;
   category: SystemCategory;
   url: string | null;
+  /** Stable registry id; null for custom/manual systems. */
+  adapterKey: string | null;
   createdAt: string;
   updatedAt: string;
 }

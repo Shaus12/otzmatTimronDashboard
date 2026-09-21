@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { toUserFacingError } from "@/lib/errors";
 
 type CrudPanelProps<T extends { id: string }> = {
   canWrite: boolean;
@@ -54,7 +55,7 @@ export function CrudPanel<T extends { id: string; name?: string; title?: string;
       await onSave(draft);
       setDraft(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "השמירה נכשלה");
+      setError(toUserFacingError(e));
     } finally {
       setBusy(false);
     }
@@ -68,7 +69,7 @@ export function CrudPanel<T extends { id: string; name?: string; title?: string;
       await onDelete(remove.id);
       setRemove(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "המחיקה נכשלה");
+      setError(toUserFacingError(e));
     } finally {
       setBusy(false);
     }

@@ -7,6 +7,7 @@ const seed: Array<{
   description: string;
   category: SystemCategory;
   url: string | null;
+  adapterKey: string | null;
 }> = [
   {
     id: "leumi",
@@ -14,6 +15,7 @@ const seed: Array<{
     description: "חשבונות הבנק של החברה",
     category: "finance",
     url: "https://www.leumi.co.il/he",
+    adapterKey: "bank_leumi",
   },
   {
     id: "rivhit",
@@ -21,6 +23,7 @@ const seed: Array<{
     description: "הנהלת חשבונות וחשבוניות",
     category: "finance",
     url: "https://online1.rivhit.co.il/loginmanager/",
+    adapterKey: "rivhit",
   },
   {
     id: "priority",
@@ -28,6 +31,7 @@ const seed: Array<{
     description: "ניהול הפעילות העסקית · יש להוסיף כתובת חברה",
     category: "finance",
     url: null,
+    adapterKey: "priority",
   },
   {
     id: "tax",
@@ -35,6 +39,7 @@ const seed: Array<{
     description: "האזור האישי ברשות המסים",
     category: "finance",
     url: "https://www.gov.il/he/service/personal_area_taxes",
+    adapterKey: "tax_authority",
   },
   {
     id: "bdi",
@@ -42,6 +47,7 @@ const seed: Array<{
     description: "מידע עסקי ודוחות אשראי",
     category: "finance",
     url: "https://www.bdicoface.co.il/",
+    adapterKey: "bdi",
   },
   {
     id: "masav",
@@ -49,6 +55,7 @@ const seed: Array<{
     description: "סליקה והעברות בנקאיות",
     category: "finance",
     url: "https://www.masav.co.il/",
+    adapterKey: "masav",
   },
   {
     id: "timewatch",
@@ -56,6 +63,7 @@ const seed: Array<{
     description: "נוכחות ושעות עובדים",
     category: "hr",
     url: "https://a.timewatch.co.il/",
+    adapterKey: "timewatch",
   },
   {
     id: "salary",
@@ -63,6 +71,7 @@ const seed: Array<{
     description: "יש להוסיף קישור למערכת השכר",
     category: "hr",
     url: null,
+    adapterKey: "payroll",
   },
   {
     id: "pazomat",
@@ -70,6 +79,7 @@ const seed: Array<{
     description: "דלק וניהול תדלוקים · אתר פז",
     category: "fleet",
     url: "https://www.paz.co.il/",
+    adapterKey: "pazomat",
   },
   {
     id: "gov",
@@ -77,6 +87,7 @@ const seed: Array<{
     description: "קנסות ודוחות ממשלתיים",
     category: "fleet",
     url: "https://my.gov.il/landing/index.html",
+    adapterKey: "gov_il",
   },
   {
     id: "road6",
@@ -84,6 +95,7 @@ const seed: Array<{
     description: "חשבוניות נשלחות לתיבת הדואר",
     category: "fleet",
     url: "https://www.kvish6.co.il/Service.aspx",
+    adapterKey: "road6",
   },
   {
     id: "andromeda",
@@ -91,6 +103,7 @@ const seed: Array<{
     description: "יש להוסיף את כתובת המערכת",
     category: "fleet",
     url: null,
+    adapterKey: "andromeda",
   },
   {
     id: "gmail",
@@ -98,6 +111,7 @@ const seed: Array<{
     description: "דואר החברה וחשבוניות כביש 6",
     category: "comms",
     url: "https://mail.google.com/",
+    adapterKey: "gmail",
   },
   {
     id: "office",
@@ -105,6 +119,7 @@ const seed: Array<{
     description: "דואר המשרד · יש להסדיר הרשאת גישה",
     category: "comms",
     url: "https://outlook.office.com/mail/",
+    adapterKey: "office_mail",
   },
   {
     id: "whatsapp",
@@ -112,6 +127,7 @@ const seed: Array<{
     description: "תקשורת שוטפת · יש להסדיר הרשאת גישה",
     category: "comms",
     url: "https://web.whatsapp.com/",
+    adapterKey: "whatsapp",
   },
   {
     id: "invoices",
@@ -119,6 +135,7 @@ const seed: Array<{
     description: "טבלת מעקב חשבוניות מרכזית",
     category: "finance",
     url: null,
+    adapterKey: null,
   },
 ];
 

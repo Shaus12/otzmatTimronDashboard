@@ -1,5 +1,6 @@
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { canWrite } from "@/lib/auth/permissions";
+import { getAdapterStatusesForSystems } from "@/lib/adapters";
 import { getDataStore } from "@/lib/data";
 import { navLabels, pageDescriptions } from "@/lib/labels";
 import { PageShell } from "@/components/layout/page-shell";
@@ -10,6 +11,7 @@ export default async function SystemsPage() {
   const store = await getDataStore();
   const profile = await getCurrentProfile();
   const systems = await store.getSystems();
+  const statuses = await getAdapterStatusesForSystems(systems);
 
   return (
     <PageShell section={navLabels.systems}>
@@ -19,6 +21,7 @@ export default async function SystemsPage() {
       />
       <SystemsCrud
         systems={systems}
+        statuses={statuses}
         canWrite={canWrite(profile?.role, "systems")}
       />
     </PageShell>

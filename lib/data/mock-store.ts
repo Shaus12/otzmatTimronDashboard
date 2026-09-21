@@ -476,7 +476,7 @@ export class MockDataStore implements DataStore {
 
   async updateEmployee(id: string, input: EmployeeInput): Promise<Employee> {
     const idx = employees.findIndex((e) => e.id === id);
-    if (idx < 0) throw new Error("Employee not found");
+    if (idx < 0) throw new Error("העובד לא נמצא.");
     employees[idx] = {
       ...employees[idx],
       ...input,
@@ -512,7 +512,7 @@ export class MockDataStore implements DataStore {
 
   async updateVehicle(id: string, input: VehicleInput): Promise<Vehicle> {
     const idx = vehicles.findIndex((v) => v.id === id);
-    if (idx < 0) throw new Error("Vehicle not found");
+    if (idx < 0) throw new Error("הרכב לא נמצא.");
     vehicles[idx] = {
       ...vehicles[idx],
       ...input,
@@ -586,7 +586,7 @@ export class MockDataStore implements DataStore {
 
   async updateFine(id: string, input: FineInput): Promise<Fine> {
     const idx = fines.findIndex((f) => f.id === id);
-    if (idx < 0) throw new Error("Fine not found");
+    if (idx < 0) throw new Error("הקנס לא נמצא.");
     fines[idx] = {
       ...fines[idx],
       ...input,
@@ -622,7 +622,7 @@ export class MockDataStore implements DataStore {
 
   async updateLegalCase(id: string, input: LegalCaseInput): Promise<LegalCase> {
     const idx = legalCases.findIndex((c) => c.id === id);
-    if (idx < 0) throw new Error("Legal case not found");
+    if (idx < 0) throw new Error("התיק לא נמצא.");
     legalCases[idx] = {
       ...legalCases[idx],
       ...input,
@@ -658,7 +658,7 @@ export class MockDataStore implements DataStore {
 
   async updateProperty(id: string, input: PropertyInput): Promise<Property> {
     const idx = properties.findIndex((p) => p.id === id);
-    if (idx < 0) throw new Error("Property not found");
+    if (idx < 0) throw new Error("הנכס לא נמצא.");
     properties[idx] = {
       ...properties[idx],
       ...input,
@@ -694,7 +694,7 @@ export class MockDataStore implements DataStore {
 
   async updateTask(id: string, input: TaskInput): Promise<Task> {
     const idx = tasks.findIndex((t) => t.id === id);
-    if (idx < 0) throw new Error("Task not found");
+    if (idx < 0) throw new Error("המשימה לא נמצאה.");
     tasks[idx] = {
       ...tasks[idx],
       ...input,
@@ -720,6 +720,7 @@ export class MockDataStore implements DataStore {
     const now = new Date().toISOString();
     const row: System = {
       ...input,
+      adapterKey: null,
       id:
         input.name.toLowerCase().replace(/\s+/g, "-") ||
         `sys-${crypto.randomUUID()}`,
@@ -732,11 +733,12 @@ export class MockDataStore implements DataStore {
 
   async updateSystem(id: string, input: SystemInput): Promise<System> {
     const idx = systems.findIndex((s) => s.id === id);
-    if (idx < 0) throw new Error("System not found");
+    if (idx < 0) throw new Error("המערכת לא נמצאה.");
     systems[idx] = {
       ...systems[idx],
       ...input,
       id,
+      adapterKey: systems[idx].adapterKey,
       updatedAt: new Date().toISOString(),
     };
     return systems[idx];
@@ -765,7 +767,7 @@ export class MockDataStore implements DataStore {
 
   async updateExpense(id: string, input: ExpenseInput): Promise<Expense> {
     const idx = expenses.findIndex((e) => e.id === id);
-    if (idx < 0) throw new Error("Expense not found");
+    if (idx < 0) throw new Error("ההוצאה לא נמצאה.");
     expenses[idx] = {
       ...expenses[idx],
       ...input,
@@ -797,7 +799,7 @@ export class MockDataStore implements DataStore {
 
   async updateInvoice(id: string, input: InvoiceInput): Promise<Invoice> {
     const idx = invoices.findIndex((i) => i.id === id);
-    if (idx < 0) throw new Error("Invoice not found");
+    if (idx < 0) throw new Error("החשבונית לא נמצאה.");
     invoices[idx] = {
       ...invoices[idx],
       ...input,
@@ -829,7 +831,7 @@ export class MockDataStore implements DataStore {
 
   async updatePayment(id: string, input: PaymentInput): Promise<Payment> {
     const idx = payments.findIndex((p) => p.id === id);
-    if (idx < 0) throw new Error("Payment not found");
+    if (idx < 0) throw new Error("התשלום לא נמצא.");
     payments[idx] = {
       ...payments[idx],
       ...input,

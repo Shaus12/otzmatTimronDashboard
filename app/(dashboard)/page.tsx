@@ -1,4 +1,5 @@
 import { Car, Layers, ListChecks, Users } from "lucide-react";
+import { getAdapterStatusesForSystems } from "@/lib/adapters";
 import { getDataStore } from "@/lib/data";
 import { navLabels, pageDescriptions } from "@/lib/labels";
 import { PageShell } from "@/components/layout/page-shell";
@@ -15,6 +16,28 @@ export default async function HomePage() {
     store.getSystems(),
     store.getTasks(),
   ]);
+  const featuredKeys = new Set([
+    "bank_leumi",
+    "rivhit",
+    "priority",
+    "timewatch",
+    "gmail",
+    "whatsapp",
+  ]);
+  const featuredIds = new Set([
+    "leumi",
+    "rivhit",
+    "priority",
+    "timewatch",
+    "gmail",
+    "whatsapp",
+  ]);
+  const featured = systems.filter(
+    (s) =>
+      (s.adapterKey && featuredKeys.has(s.adapterKey)) ||
+      featuredIds.has(s.id),
+  );
+  const statuses = await getAdapterStatusesForSystems(featured);
 
   return (
     <PageShell section={navLabels.home}>
@@ -62,7 +85,7 @@ export default async function HomePage() {
 
       <div className="overview-layout">
         <div className="main-column">
-          <SystemsSection systems={systems} />
+          <SystemsSection systems={systems} statuses={statuses} />
           <QuickLinks />
         </div>
         <aside className="right-column">

@@ -11,7 +11,6 @@ import {
   Scale,
   ReceiptText,
   ListChecks,
-  ShieldCheck,
   LogOut,
 } from "lucide-react";
 import {
@@ -106,17 +105,6 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="sidebar-note">
-          <ShieldCheck size={20} />
-          <div>
-            <strong>סביבת עבודה</strong>
-            <p>
-              ההרשאות נקבעות לפי תפקיד המשתמש
-              <br />
-              בפרופיל המחובר.
-            </p>
-          </div>
-        </div>
         <div className="profile">
           <span>{initials}</span>
           <div>

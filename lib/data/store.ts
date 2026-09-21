@@ -21,7 +21,10 @@ export type FineInput = Omit<Fine, "id" | "createdAt" | "updatedAt">;
 export type LegalCaseInput = Omit<LegalCase, "id" | "createdAt" | "updatedAt">;
 export type PropertyInput = Omit<Property, "id" | "createdAt" | "updatedAt">;
 export type TaskInput = Omit<Task, "id" | "createdAt" | "updatedAt">;
-export type SystemInput = Omit<System, "id" | "createdAt" | "updatedAt">;
+export type SystemInput = Omit<
+  System,
+  "id" | "createdAt" | "updatedAt" | "adapterKey"
+>;
 export type ExpenseInput = Omit<Expense, "id" | "createdAt" | "updatedAt">;
 export type InvoiceInput = Omit<Invoice, "id" | "createdAt" | "updatedAt">;
 export type PaymentInput = Omit<Payment, "id" | "createdAt" | "updatedAt">;
