@@ -2,6 +2,7 @@ import type { SystemCategory } from "@/lib/data/types";
 
 export type AdapterStatusState =
   | "mock"
+  | "imported"
   | "connected"
   | "error"
   | "missing_access"

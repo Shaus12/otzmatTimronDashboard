@@ -40,3 +40,11 @@ yarn-error.log*
 # typescript
 next-env.d.ts
 *.tsbuildinfo
+
+# Private source snapshots and previous local preview state
+/.local-data/
+/work/
+/outputs/
+/.sites-runtime/
+/.vinext/
+/.wrangler/

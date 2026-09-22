@@ -8,6 +8,12 @@ import { KpiCards } from "@/components/home/kpi-cards";
 import { SystemsSection } from "@/components/home/systems-section";
 import { OpenTasksPanel } from "@/components/home/open-tasks-panel";
 import { QuickLinks } from "@/components/home/quick-links";
+import { TimewatchSummary } from "@/components/home/timewatch-summary";
+import { readTimewatchSnapshot } from "@/lib/integrations/timewatch-snapshot";
+import { readGmailSnapshot } from "@/lib/integrations/gmail-snapshot";
+import { GmailSummary } from "@/components/home/gmail-summary";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const store = await getDataStore();
@@ -38,6 +44,8 @@ export default async function HomePage() {
       featuredIds.has(s.id),
   );
   const statuses = await getAdapterStatusesForSystems(featured);
+  const timewatch = await readTimewatchSnapshot();
+  const gmail = await readGmailSnapshot();
 
   return (
     <PageShell section={navLabels.home}>
@@ -82,6 +90,9 @@ export default async function HomePage() {
           },
         ]}
       />
+
+      {timewatch.snapshot ? <TimewatchSummary snapshot={timewatch.snapshot}/> : null}
+      {gmail.snapshot ? <GmailSummary snapshot={gmail.snapshot}/> : null}
 
       <div className="overview-layout">
         <div className="main-column">

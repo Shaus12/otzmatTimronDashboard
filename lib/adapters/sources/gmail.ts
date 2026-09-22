@@ -1,7 +1,9 @@
 import { createMockAdapter } from "../mock";
 import type { ExpenseLikeRow } from "../types";
+import type { SourceAdapter } from "../types";
+import { readGmailSnapshot } from "@/lib/integrations/gmail-snapshot";
 
-export const gmailAdapter = createMockAdapter<ExpenseLikeRow>({
+const mockAdapter = createMockAdapter<ExpenseLikeRow>({
   id: "gmail",
   name: "Gmail",
   category: "comms",
@@ -31,3 +33,21 @@ export const gmailAdapter = createMockAdapter<ExpenseLikeRow>({
     },
   ],
 });
+
+export const gmailAdapter: SourceAdapter<ExpenseLikeRow> = {
+  ...mockAdapter,
+  async checkStatus() {
+    const result = await readGmailSnapshot();
+    if (result.state === "error") return { state: "error", message: "קובץ הדואר המקומי אינו תקין" };
+    if (result.snapshot) return { state: "imported", lastSynced: result.snapshot.capturedAt,
+      message: "מדגם חשבוניות ותזכורות מהמייל · ייבוא חד־פעמי" };
+    return mockAdapter.checkStatus();
+  },
+  async fetchData() {
+    const result = await readGmailSnapshot();
+    if (result.snapshot) return result.snapshot.records.filter(row => row.kind === "invoice" && row.amount !== null)
+      .map(row => ({ id: row.id, subject: row.subject, vendor: row.vendor, amount: row.amount as number, receivedAt: row.date }));
+    if (result.state === "error") return [];
+    return mockAdapter.fetchData();
+  },
+};

@@ -48,6 +48,8 @@ npm run lint
 
 ## Source adapters
 
+See [INTEGRATIONS.md](./INTEGRATIONS.md) for the verified Gmail/TimeWatch local import and the remaining API integration work.
+
 External systems are linked via `systems.adapter_key` (stable id → `lib/adapters` registry).
 Apply `supabase/migrations/20260921140000_add_systems_adapter_key.sql` in the Supabase SQL editor if the column is not present yet.
 

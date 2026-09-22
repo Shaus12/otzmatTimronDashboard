@@ -1,7 +1,9 @@
 import { createMockAdapter } from "../mock";
 import type { AttendanceRow } from "../types";
+import type { SourceAdapter } from "../types";
+import { readTimewatchSnapshot } from "@/lib/integrations/timewatch-snapshot";
 
-export const timewatchAdapter = createMockAdapter<AttendanceRow>({
+const mockAdapter = createMockAdapter<AttendanceRow>({
   id: "timewatch",
   name: "TimeWatch",
   category: "hr",
@@ -34,3 +36,22 @@ export const timewatchAdapter = createMockAdapter<AttendanceRow>({
     },
   ],
 });
+
+export const timewatchAdapter: SourceAdapter<AttendanceRow> = {
+  ...mockAdapter,
+  async checkStatus() {
+    const result = await readTimewatchSnapshot();
+    if (result.state === "error") return { state: "error", message: "קובץ הנוכחות המקומי אינו תקין" };
+    if (result.snapshot) return {
+      state: "imported", lastSynced: result.snapshot.capturedAt,
+      message: "סיכום נוכחות אמיתי שיובא פעם אחת · ללא סנכרון אוטומטי",
+    };
+    return mockAdapter.checkStatus();
+  },
+  async fetchData() {
+    const result = await readTimewatchSnapshot();
+    // A summary is not a list of employee attendance records. Never mix real and demo rows.
+    if (result.state !== "unavailable") return [];
+    return mockAdapter.fetchData();
+  },
+};

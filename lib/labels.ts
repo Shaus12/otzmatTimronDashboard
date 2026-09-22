@@ -75,6 +75,7 @@ export const taskStatusLabels: Record<TaskStatus, string> = {
 };
 
 export const adapterStatusLabels = {
+  imported: "ייבוא חד־פעמי",
   mock: "מדומה",
   connected: "מחובר",
   error: "שגיאה",

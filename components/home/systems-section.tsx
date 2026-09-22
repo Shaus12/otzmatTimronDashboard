@@ -233,6 +233,12 @@ export function SystemsGrid({
                 </>
               ) : null}
               <div className="form-actions">
+                {selectedStatus?.state === "imported" && (selected.adapterKey === "gmail" || selected.id === "gmail") ? (
+                  <Button asChild><Link href="/systems/gmail">צפייה בחשבוניות ועדכונים</Link></Button>
+                ) : null}
+                {selectedStatus?.state === "imported" && (selected.adapterKey === "timewatch" || selected.id === "timewatch") ? (
+                  <Button asChild><Link href="/systems/timewatch">צפייה בנתוני הנוכחות</Link></Button>
+                ) : null}
                 {selected.url ? (
                   <Button asChild>
                     <a
@@ -269,7 +275,7 @@ export function SystemsSection({
       <div className="section-heading">
         <div>
           <h2>המערכות שלך</h2>
-          <p>סטטוס מקורות נתונים (מתאמים מדומים לעת עתה)</p>
+          <p>סטטוס מקור הנתונים ומועד העדכון של כל מערכת</p>
         </div>
         <Link className="text-button" href="/systems">
           לכל המערכות
