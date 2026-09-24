@@ -1,53 +1,74 @@
-import { createMockAdapter } from "../mock";
-import type { ExpenseLikeRow } from "../types";
+import "server-only";
 import type { SourceAdapter } from "../types";
-import { readGmailSnapshot } from "@/lib/integrations/gmail-snapshot";
+import {
+  GMAIL_PROVIDER,
+  getOAuthConnectionStatus,
+} from "@/lib/gmail/connections";
+import {
+  fetchRecentInvoiceLikeMessages,
+  getValidGmailAccessToken,
+  type GmailMessageRow,
+} from "@/lib/gmail/oauth";
 
-const mockAdapter = createMockAdapter<ExpenseLikeRow>({
+export type { GmailMessageRow };
+
+function connectedMessage(email: string | null | undefined): string {
+  return email
+    ? `מחובר ל־Gmail כ־${email} (קריאה בלבד)`
+    : "מחובר ל־Gmail (קריאה בלבד)";
+}
+
+/** Real Gmail adapter — status from oauth_connection_status; tokens stay service-role only. */
+export const gmailAdapter: SourceAdapter<GmailMessageRow> = {
   id: "gmail",
   name: "Gmail",
   category: "comms",
-  lastSynced: "2026-09-20T07:15:00.000Z",
-  message: "סריקת תיבת הדואר מדומה — חשבוניות מכביש 6 וספקים",
-  rows: [
-    {
-      id: "gm-1",
-      subject: "חשבונית כביש 6 · ספטמבר",
-      vendor: "כביש 6",
-      amount: 312,
-      receivedAt: "2026-09-18T09:12:00.000Z",
-    },
-    {
-      id: "gm-2",
-      subject: "קבלה · תדלוק פז",
-      vendor: "פז",
-      amount: 480,
-      receivedAt: "2026-09-17T14:40:00.000Z",
-    },
-    {
-      id: "gm-3",
-      subject: "חשבונית שירותי משרד",
-      vendor: "ספק משרד דמו",
-      amount: 890,
-      receivedAt: "2026-09-16T11:05:00.000Z",
-    },
-  ],
-});
 
-export const gmailAdapter: SourceAdapter<ExpenseLikeRow> = {
-  ...mockAdapter,
   async checkStatus() {
-    const result = await readGmailSnapshot();
-    if (result.state === "error") return { state: "error", message: "קובץ הדואר המקומי אינו תקין" };
-    if (result.snapshot) return { state: "imported", lastSynced: result.snapshot.capturedAt,
-      message: "מדגם חשבוניות ותזכורות מהמייל · ייבוא חד־פעמי" };
-    return mockAdapter.checkStatus();
+    try {
+      const connection = await getOAuthConnectionStatus(GMAIL_PROVIDER);
+      if (!connection) {
+        return {
+          state: "missing_access",
+          message: "לא מחובר ל־Gmail — לחצו התחבר כדי לאשר גישה לקריאה בלבד",
+        };
+      }
+
+      try {
+        await getValidGmailAccessToken();
+      } catch {
+        return {
+          state: "error",
+          accountEmail: connection.connectedEmail || undefined,
+          lastSynced:
+            connection.lastSyncedAt || connection.updatedAt || undefined,
+          message:
+            "חיבור Gmail פג או בוטל — התחברו מחדש כדי לרענן את ההרשאה",
+          gmailSyncEnabled: connection.gmailSyncEnabled,
+        };
+      }
+
+      return {
+        state: "connected",
+        accountEmail: connection.connectedEmail || undefined,
+        lastSynced:
+          connection.lastSyncedAt || connection.updatedAt || undefined,
+        message: connectedMessage(connection.connectedEmail),
+        gmailSyncEnabled: connection.gmailSyncEnabled,
+      };
+    } catch {
+      return {
+        state: "error",
+        message: "לא ניתן לאמת את חיבור Gmail — נסו להתחבר מחדש",
+      };
+    }
   },
+
   async fetchData() {
-    const result = await readGmailSnapshot();
-    if (result.snapshot) return result.snapshot.records.filter(row => row.kind === "invoice" && row.amount !== null)
-      .map(row => ({ id: row.id, subject: row.subject, vendor: row.vendor, amount: row.amount as number, receivedAt: row.date }));
-    if (result.state === "error") return [];
-    return mockAdapter.fetchData();
+    try {
+      return await fetchRecentInvoiceLikeMessages(15);
+    } catch {
+      return [];
+    }
   },
 };

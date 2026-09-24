@@ -1,12 +1,15 @@
-import { Car, Layers, ListChecks, Users } from "lucide-react";
+import { AlertTriangle, Car, Layers, Users } from "lucide-react";
+import { getCurrentProfile } from "@/lib/auth/profile";
 import { getAdapterStatusesForSystems } from "@/lib/adapters";
 import { getDataStore } from "@/lib/data";
+import { buildAttentionQueue } from "@/lib/attention/queue";
 import { navLabels, pageDescriptions } from "@/lib/labels";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeading } from "@/components/layout/page-heading";
 import { KpiCards } from "@/components/home/kpi-cards";
 import { SystemsSection } from "@/components/home/systems-section";
 import { OpenTasksPanel } from "@/components/home/open-tasks-panel";
+import { AttentionPanel } from "@/components/home/attention-panel";
 import { QuickLinks } from "@/components/home/quick-links";
 import { TimewatchSummary } from "@/components/home/timewatch-summary";
 import { readTimewatchSnapshot } from "@/lib/integrations/timewatch-snapshot";
@@ -17,11 +20,16 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const store = await getDataStore();
-  const [kpis, systems, tasks] = await Promise.all([
+  const profile = await getCurrentProfile();
+  const [kpis, systems, tasks, expenses, fines, invoices] = await Promise.all([
     store.getHomeKpis(),
     store.getSystems(),
     store.getTasks(),
+    store.getExpenses(),
+    store.getFines(),
+    store.getInvoices(),
   ]);
+  const attentionItems = buildAttentionQueue(expenses, fines, invoices);
   const featuredKeys = new Set([
     "bank_leumi",
     "rivhit",
@@ -81,11 +89,11 @@ export default async function HomePage() {
             icon: Car,
           },
           {
-            href: "/tasks",
-            label: "משימות פתוחות",
-            value: String(kpis.openTaskCount).padStart(2, "0"),
-            meta: "ממתינות להמשך טיפול",
-            icon: ListChecks,
+            href: "/attention",
+            label: "דורש תשומת לב",
+            value: String(attentionItems.length).padStart(2, "0"),
+            meta: "הוצאות, חריגות וקנסות",
+            icon: AlertTriangle,
             accent: true,
           },
         ]}
@@ -96,10 +104,15 @@ export default async function HomePage() {
 
       <div className="overview-layout">
         <div className="main-column">
-          <SystemsSection systems={systems} statuses={statuses} />
+          <SystemsSection
+            systems={systems}
+            statuses={statuses}
+            isAdmin={profile?.role === "admin"}
+          />
           <QuickLinks />
         </div>
         <aside className="right-column">
+          <AttentionPanel items={attentionItems} />
           <OpenTasksPanel tasks={tasks} />
           <section className="setup-note">
             <h3>שכבת נתונים</h3>

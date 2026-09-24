@@ -1,7 +1,12 @@
 import type {
+  AttendanceStatus,
   EmployeeStatus,
+  ExpenseAnomalyFlag,
+  ExpenseCategory,
+  ExpenseStatus,
   FineStatus,
   LegalStatus,
+  ProjectStatus,
   PropertyStatus,
   SystemCategory,
   TaskStatus,
@@ -11,6 +16,14 @@ import type {
 export const navLabels = {
   home: "סקירה כללית",
   systems: "כל המערכות",
+  imports: "ייבוא קבצים",
+  expenses: "הוצאות",
+  attention: "דורש תשומת לב",
+  reports: "סיכומים ודוחות",
+  collections: "גבייה",
+  attendance: "נוכחות",
+  clients: "לקוחות",
+  projects: "פרויקטים",
   employees: "עובדים",
   vehicles: "רכבים",
   properties: "דירות ונכסים",
@@ -22,6 +35,15 @@ export const navLabels = {
 export const pageDescriptions = {
   home: "כל מה שצריך ליום העבודה, במקום אחד.",
   systems: "קיצורי דרך למערכות החברה, לפי תחום פעילות.",
+  imports:
+    "העלאת דוחות בנק, מס״ב וייצואים ידניים — מיפוי עמודות וייבוא לבדיקה.",
+  expenses: "סקירת הוצאות, שיוך לעובד/רכב וטיפול בסטטוס.",
+  attention: "תור אחוד להוצאות לבדיקה, חריגות, קנסות וחשבוניות באיחור.",
+  reports: "סיכום הוצאות יומי/שבועי/חודשי לפי קטגוריה ומטבע.",
+  collections: "מעקב חשבוניות, פיגורי תשלום ופתיחת משימות גבייה.",
+  attendance: "סנכרון נוכחות מ־TimeWatch, חריגות וסיכום שבועי למנהל.",
+  clients: "רשימת לקוחות — שם, טלפון ואימייל.",
+  projects: "פרויקטים מול לקוחות וסטטוס ביצוע.",
   employees: "פרטי עובדים והרכב המשויך לכל עובד.",
   vehicles: "רכבי החברה, שיוכים לעובדים ומועדי חידוש.",
   properties: "כתובות, אנשי קשר ומועדי טיפול בנכסי החברה.",
@@ -74,6 +96,44 @@ export const taskStatusLabels: Record<TaskStatus, string> = {
   done: "הושלם",
 };
 
+export const expenseStatusLabels: Record<ExpenseStatus, string> = {
+  ok: "טופל",
+  needs_review: "דורש בדיקה",
+  missing_document: "חסר מסמך",
+  duplicate: "כפול",
+};
+
+export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
+  fuel: "דלק",
+  tolls: "אגרות",
+  maintenance: "תחזוקה",
+  office: "משרד",
+  insurance: "ביטוח",
+  software: "תוכנה",
+  other: "אחר",
+};
+
+export const expenseAnomalyLabels: Record<
+  NonNullable<ExpenseAnomalyFlag>,
+  string
+> = {
+  high_amount: "הוצאה גבוהה",
+  unreviewed_recurring: "חיוב חוזר לא מוכר",
+};
+
+export const attendanceStatusLabels: Record<AttendanceStatus, string> = {
+  present: "נוכח",
+  late: "איחור",
+  absent: "חיסור",
+};
+
+export const projectStatusLabels: Record<ProjectStatus, string> = {
+  active: "פעיל",
+  on_hold: "מושהה",
+  completed: "הושלם",
+  inactive: "לא פעיל",
+};
+
 export const adapterStatusLabels = {
   imported: "ייבוא חד־פעמי",
   mock: "מדומה",
@@ -90,14 +150,22 @@ export function formatDate(value: string | null | undefined): string {
   return date.toLocaleDateString("he-IL");
 }
 
+export function formatMoney(amount: number, currency = "ILS"): string {
+  try {
+    return new Intl.NumberFormat("he-IL", {
+      style: "currency",
+      currency: currency || "ILS",
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${amount} ${currency}`;
+  }
+}
+
 export function formatIls(amount: number): string {
-  return new Intl.NumberFormat("he-IL", {
-    style: "currency",
-    currency: "ILS",
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatMoney(amount, "ILS");
 }
 
 export function isCompleteStatus(label: string): boolean {
-  return ["הושלם", "פעיל", "שולם", "סגור"].includes(label);
+  return ["הושלם", "פעיל", "שולם", "סגור", "טופל"].includes(label);
 }

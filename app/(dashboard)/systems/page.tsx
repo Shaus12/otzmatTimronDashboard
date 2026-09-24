@@ -7,11 +7,16 @@ import { PageShell } from "@/components/layout/page-shell";
 import { PageHeading } from "@/components/layout/page-heading";
 import { SystemsCrud } from "@/components/systems/systems-crud";
 
-export default async function SystemsPage() {
+export default async function SystemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gmail?: string; email?: string }>;
+}) {
   const store = await getDataStore();
   const profile = await getCurrentProfile();
   const systems = await store.getSystems();
   const statuses = await getAdapterStatusesForSystems(systems);
+  const params = await searchParams;
 
   return (
     <PageShell section={navLabels.systems}>
@@ -23,6 +28,11 @@ export default async function SystemsPage() {
         systems={systems}
         statuses={statuses}
         canWrite={canWrite(profile?.role, "systems")}
+        isAdmin={profile?.role === "admin"}
+        gmailReplaceEmail={
+          params.gmail === "confirm_replace" ? params.email ?? "" : null
+        }
+        gmailFlash={params.gmail ?? null}
       />
     </PageShell>
   );

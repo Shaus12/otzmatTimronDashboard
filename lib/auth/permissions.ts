@@ -10,12 +10,15 @@ export type WritableEntity =
   | "systems"
   | "expenses"
   | "invoices"
-  | "payments";
+  | "payments"
+  | "attendance"
+  | "clients"
+  | "projects";
 
 /**
  * UI + server-action write gate. Must stay aligned with Postgres RLS.
- * legal / properties / tasks / systems: admin only (RLS).
- * employees / vehicles / fines: admin + operations.
+ * legal / properties / tasks / systems / clients / projects: admin only.
+ * employees / vehicles / fines / attendance: admin + operations.
  * accounting: finance entities when those screens exist (not fines).
  */
 const writeMatrix: Record<AppRole, ReadonlySet<WritableEntity>> = {
@@ -30,8 +33,11 @@ const writeMatrix: Record<AppRole, ReadonlySet<WritableEntity>> = {
     "expenses",
     "invoices",
     "payments",
+    "attendance",
+    "clients",
+    "projects",
   ]),
-  operations: new Set(["employees", "vehicles", "fines"]),
+  operations: new Set(["employees", "vehicles", "fines", "attendance"]),
   accounting: new Set(["expenses", "invoices", "payments"]),
   viewer: new Set(),
 };

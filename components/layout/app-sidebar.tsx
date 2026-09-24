@@ -12,6 +12,14 @@ import {
   ReceiptText,
   ListChecks,
   LogOut,
+  Upload,
+  Wallet,
+  AlertTriangle,
+  BarChart3,
+  HandCoins,
+  Clock3,
+  BriefcaseBusiness,
+  FolderKanban,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,10 +39,18 @@ import { signOut } from "@/app/login/actions";
 const primaryLinks = [
   { href: "/", label: navLabels.home, icon: LayoutDashboard },
   { href: "/systems", label: navLabels.systems, icon: Layers },
+  { href: "/imports", label: navLabels.imports, icon: Upload, roles: ["admin", "accounting"] as const },
+  { href: "/expenses", label: navLabels.expenses, icon: Wallet },
+  { href: "/collections", label: navLabels.collections, icon: HandCoins },
+  { href: "/attendance", label: navLabels.attendance, icon: Clock3 },
+  { href: "/attention", label: navLabels.attention, icon: AlertTriangle },
+  { href: "/reports", label: navLabels.reports, icon: BarChart3 },
   { href: "/tasks", label: navLabels.tasks, icon: ListChecks },
 ] as const;
 
 const companyLinks = [
+  { href: "/clients", label: navLabels.clients, icon: BriefcaseBusiness },
+  { href: "/projects", label: navLabels.projects, icon: FolderKanban },
   { href: "/employees", label: navLabels.employees, icon: Users },
   { href: "/vehicles", label: navLabels.vehicles, icon: Car },
   { href: "/properties", label: navLabels.properties, icon: Building2 },
@@ -66,7 +82,13 @@ export function AppSidebar({ profile }: { profile: Profile | null }) {
       <SidebarContent>
         <p className="nav-label">סביבת עבודה</p>
         <SidebarMenu>
-          {primaryLinks.map(({ href, label, icon: Icon }) => (
+          {primaryLinks
+            .filter((link) => {
+              if (!("roles" in link) || !link.roles) return true;
+              if (!profile) return false;
+              return (link.roles as readonly string[]).includes(profile.role);
+            })
+            .map(({ href, label, icon: Icon }) => (
             <SidebarMenuItem key={href}>
               <SidebarMenuButton
                 size="lg"

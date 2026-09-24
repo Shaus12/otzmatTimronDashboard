@@ -1,27 +1,36 @@
 import { getSystemCatalog } from "./system-catalog";
+import { detectExpenseAnomaly } from "@/lib/expenses/anomalies";
 import type {
+  AttendanceRecordInput,
+  ClientInput,
   DataStore,
   EmployeeInput,
   ExpenseInput,
   FineInput,
   InvoiceInput,
   LegalCaseInput,
+  LegalCaseNoteInput,
   PaymentInput,
+  ProjectInput,
   PropertyInput,
   SystemInput,
   TaskInput,
   VehicleInput,
 } from "./store";
 import type {
+  AttendanceRecord,
   AuditLog,
+  Client,
   Employee,
   Expense,
   Fine,
   HomeKpis,
   Invoice,
   LegalCase,
+  LegalCaseNote,
   Payment,
   ProfileOption,
+  Project,
   Property,
   System,
   Task,
@@ -90,6 +99,7 @@ const vehicles: Vehicle[] = [
     model: "קורולה",
     year: 2022,
     notes: "היברידית",
+    clientId: null,
     status: "active",
     createdAt: STAMP,
     updatedAt: STAMP,
@@ -101,6 +111,7 @@ const vehicles: Vehicle[] = [
     model: "טרנזיט",
     year: 2021,
     notes: "מסחרית",
+    clientId: null,
     status: "active",
     createdAt: STAMP,
     updatedAt: STAMP,
@@ -112,6 +123,7 @@ const vehicles: Vehicle[] = [
     model: "איוניק",
     year: 2023,
     notes: "ליסינג",
+    clientId: null,
     status: "in_service",
     createdAt: STAMP,
     updatedAt: STAMP,
@@ -123,6 +135,7 @@ const vehicles: Vehicle[] = [
     model: "אוקטביה",
     year: 2020,
     notes: "פרטית",
+    clientId: null,
     status: "active",
     createdAt: STAMP,
     updatedAt: STAMP,
@@ -259,6 +272,25 @@ const legalCases: LegalCase[] = [
   },
 ];
 
+const legalCaseNotes: LegalCaseNote[] = [
+  {
+    id: "lcn-demo-01",
+    legalCaseId: "legal-demo-01",
+    authorId: "profile-demo-03",
+    authorName: "עו״ד דמו כהן",
+    note: "נשלחה תזכורת לספק — ממתין למסמך תגובה.",
+    createdAt: "2026-09-18T09:30:00.000Z",
+  },
+  {
+    id: "lcn-demo-02",
+    legalCaseId: "legal-demo-01",
+    authorId: "profile-demo-02",
+    authorName: "מיה דמו",
+    note: "התיק נפתח לאחר פנייה מהנהלת חשבונות.",
+    createdAt: "2026-09-10T14:00:00.000Z",
+  },
+];
+
 const properties: Property[] = [
   {
     id: "prop-demo-01",
@@ -355,6 +387,44 @@ const tasks: Task[] = [
   },
 ];
 
+const clients: Client[] = [
+  {
+    id: "cli-demo-01",
+    name: "לקוח דמו א׳",
+    phone: "03-000-1001",
+    email: "client-a@example.test",
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  },
+  {
+    id: "cli-demo-02",
+    name: "לקוח דמו ב׳",
+    phone: "03-000-1002",
+    email: "client-b@example.test",
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  },
+];
+
+const projects: Project[] = [
+  {
+    id: "prj-demo-01",
+    name: "פרויקט דמו א׳",
+    status: "active",
+    clientId: "cli-demo-01",
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  },
+  {
+    id: "prj-demo-02",
+    name: "פרויקט דמו ב׳",
+    status: "on_hold",
+    clientId: "cli-demo-02",
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  },
+];
+
 const expenses: Expense[] = [
   {
     id: "exp-demo-01",
@@ -364,7 +434,14 @@ const expenses: Expense[] = [
     description: "תדלוק · טרנזיט (דמו)",
     vendor: "פז",
     employeeId: "emp-demo-03",
-    status: "paid",
+    clientId: null,
+    projectId: null,
+    status: "ok",
+    source: "manual",
+    currency: "ILS",
+    incurredOn: "2026-09-10",
+    externalId: null,
+    anomalyFlag: null,
     createdAt: STAMP,
     updatedAt: STAMP,
   },
@@ -376,7 +453,14 @@ const expenses: Expense[] = [
     description: "כביש 6 · ספטמבר (דמו)",
     vendor: "כביש 6",
     employeeId: "emp-demo-01",
-    status: "open",
+    clientId: null,
+    projectId: null,
+    status: "needs_review",
+    source: "manual",
+    currency: "ILS",
+    incurredOn: "2026-09-01",
+    externalId: null,
+    anomalyFlag: null,
     createdAt: STAMP,
     updatedAt: STAMP,
   },
@@ -385,10 +469,11 @@ const expenses: Expense[] = [
 const invoices: Invoice[] = [
   {
     id: "inv-demo-01",
-    status: "sent",
+    status: "open",
     amount: 4800,
     dueDate: "2026-09-30",
-    clientName: "ספק דמו א׳",
+    clientName: "לקוח דמו א׳",
+    clientId: null,
     createdAt: STAMP,
     updatedAt: STAMP,
   },
@@ -397,11 +482,24 @@ const invoices: Invoice[] = [
     status: "paid",
     amount: 920,
     dueDate: "2026-09-01",
-    clientName: "ספק דמו ב׳",
+    clientName: "לקוח דמו ב׳",
+    clientId: null,
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  },
+  {
+    id: "inv-demo-03",
+    status: "overdue",
+    amount: 3500,
+    dueDate: "2026-08-01",
+    clientName: "לקוח דמו ג׳",
+    clientId: null,
     createdAt: STAMP,
     updatedAt: STAMP,
   },
 ];
+
+const attendanceRecords: AttendanceRecord[] = [];
 
 const payments: Payment[] = [
   {
@@ -636,6 +734,30 @@ export class MockDataStore implements DataStore {
     if (idx >= 0) legalCases.splice(idx, 1);
   }
 
+  async getLegalCaseNotes(legalCaseId: string): Promise<LegalCaseNote[]> {
+    return legalCaseNotes
+      .filter((n) => n.legalCaseId === legalCaseId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async createLegalCaseNote(
+    input: LegalCaseNoteInput,
+  ): Promise<LegalCaseNote> {
+    const authorName = input.authorId
+      ? (profiles.find((p) => p.id === input.authorId)?.fullName ?? "—")
+      : "—";
+    const row: LegalCaseNote = {
+      id: `lcn-${crypto.randomUUID()}`,
+      legalCaseId: input.legalCaseId,
+      authorId: input.authorId,
+      authorName,
+      note: input.note,
+      createdAt: new Date().toISOString(),
+    };
+    legalCaseNotes.unshift(row);
+    return row;
+  }
+
   async getProperties(): Promise<Property[]> {
     return [...properties];
   }
@@ -749,14 +871,88 @@ export class MockDataStore implements DataStore {
     if (idx >= 0) systems.splice(idx, 1);
   }
 
+  async getClients(): Promise<Client[]> {
+    return [...clients];
+  }
+
+  async getClient(id: string): Promise<Client | null> {
+    return byId(clients, id);
+  }
+
+  async createClient(input: ClientInput): Promise<Client> {
+    const now = new Date().toISOString();
+    const row: Client = {
+      ...input,
+      id: `cli-${crypto.randomUUID()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    clients.push(row);
+    return row;
+  }
+
+  async updateClient(id: string, input: ClientInput): Promise<Client> {
+    const idx = clients.findIndex((c) => c.id === id);
+    if (idx < 0) throw new Error("הלקוח לא נמצא.");
+    clients[idx] = {
+      ...clients[idx],
+      ...input,
+      updatedAt: new Date().toISOString(),
+    };
+    return clients[idx];
+  }
+
+  async deleteClient(id: string): Promise<void> {
+    const idx = clients.findIndex((c) => c.id === id);
+    if (idx >= 0) clients.splice(idx, 1);
+  }
+
+  async getProjects(): Promise<Project[]> {
+    return [...projects];
+  }
+
+  async getProject(id: string): Promise<Project | null> {
+    return byId(projects, id);
+  }
+
+  async createProject(input: ProjectInput): Promise<Project> {
+    const now = new Date().toISOString();
+    const row: Project = {
+      ...input,
+      id: `prj-${crypto.randomUUID()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    projects.push(row);
+    return row;
+  }
+
+  async updateProject(id: string, input: ProjectInput): Promise<Project> {
+    const idx = projects.findIndex((p) => p.id === id);
+    if (idx < 0) throw new Error("הפרויקט לא נמצא.");
+    projects[idx] = {
+      ...projects[idx],
+      ...input,
+      updatedAt: new Date().toISOString(),
+    };
+    return projects[idx];
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    const idx = projects.findIndex((p) => p.id === id);
+    if (idx >= 0) projects.splice(idx, 1);
+  }
+
   async getExpenses(): Promise<Expense[]> {
     return [...expenses];
   }
 
   async createExpense(input: ExpenseInput): Promise<Expense> {
     const now = new Date().toISOString();
+    const anomalyFlag = detectExpenseAnomaly(input, expenses);
     const row: Expense = {
       ...input,
+      anomalyFlag,
       id: `exp-${crypto.randomUUID()}`,
       createdAt: now,
       updatedAt: now,
@@ -774,6 +970,19 @@ export class MockDataStore implements DataStore {
       updatedAt: new Date().toISOString(),
     };
     return expenses[idx];
+  }
+
+  async setExpenseAnomalyFlag(
+    id: string,
+    anomalyFlag: Expense["anomalyFlag"],
+  ): Promise<void> {
+    const idx = expenses.findIndex((e) => e.id === id);
+    if (idx < 0) throw new Error("ההוצאה לא נמצאה.");
+    expenses[idx] = {
+      ...expenses[idx],
+      anomalyFlag,
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   async deleteExpense(id: string): Promise<void> {
@@ -843,6 +1052,51 @@ export class MockDataStore implements DataStore {
   async deletePayment(id: string): Promise<void> {
     const idx = payments.findIndex((p) => p.id === id);
     if (idx >= 0) payments.splice(idx, 1);
+  }
+
+  async getAttendanceRecords(): Promise<AttendanceRecord[]> {
+    return [...attendanceRecords].sort((a, b) =>
+      b.workDate.localeCompare(a.workDate),
+    );
+  }
+
+  async upsertAttendanceRecords(
+    inputs: AttendanceRecordInput[],
+  ): Promise<AttendanceRecord[]> {
+    const now = new Date().toISOString();
+    const out: AttendanceRecord[] = [];
+    for (const input of inputs) {
+      const workDate = input.workDate.slice(0, 10);
+      const idx = attendanceRecords.findIndex(
+        (r) => r.employeeId === input.employeeId && r.workDate === workDate,
+      );
+      if (idx >= 0) {
+        attendanceRecords[idx] = {
+          ...attendanceRecords[idx],
+          checkIn: input.checkIn,
+          checkOut: input.checkOut,
+          status: input.status,
+          source: input.source,
+          updatedAt: now,
+        };
+        out.push(attendanceRecords[idx]);
+      } else {
+        const row: AttendanceRecord = {
+          id: `att-${crypto.randomUUID()}`,
+          employeeId: input.employeeId,
+          workDate,
+          checkIn: input.checkIn,
+          checkOut: input.checkOut,
+          status: input.status,
+          source: input.source,
+          createdAt: now,
+          updatedAt: now,
+        };
+        attendanceRecords.push(row);
+        out.push(row);
+      }
+    }
+    return out;
   }
 
   async getAuditLogs(): Promise<AuditLog[]> {

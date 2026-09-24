@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -80,7 +80,91 @@ function StatusBadge({ status }: { status: AdapterStatus }) {
   return (
     <span className={`adapter-status-badge state-${status.state}`}>
       {adapterStatusLabels[status.state]}
+      {status.accountEmail &&
+      (status.state === "connected" || status.state === "error")
+        ? ` · ${status.accountEmail}`
+        : null}
     </span>
+  );
+}
+
+function gmailFlashMessage(flash: string | null | undefined): string | null {
+  switch (flash) {
+    case "connected":
+      return "Gmail חובר בהצלחה.";
+    case "disconnected":
+      return "חיבור Gmail נותק.";
+    case "forbidden":
+      return "אין הרשאה לפעולת Gmail.";
+    case "config":
+      return "חסרים מפתחות Google בסביבה.";
+    case "denied":
+      return "ההרשאה ב־Google נדחתה.";
+    case "invalid_state":
+      return "בקשת החיבור לא תקינה — נסו שוב.";
+    case "disconnect_error":
+      return "ניתוק Gmail נכשל.";
+    case "error":
+      return "חיבור Gmail נכשל.";
+    default:
+      return null;
+  }
+}
+
+
+function GmailAutoSyncToggle({
+  enabled,
+  disabled,
+}: {
+  enabled: boolean;
+  disabled?: boolean;
+}) {
+  const [on, setOn] = useState(enabled);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const toggle = () => {
+    if (disabled || pending) return;
+    const next = !on;
+    setError(null);
+    setOn(next);
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/auth/gmail/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: next }),
+        });
+        const data = (await res.json()) as { enabled?: boolean; error?: string };
+        if (!res.ok) {
+          setOn(!next);
+          setError(data.error || "עדכון נכשל");
+          return;
+        }
+        setOn(Boolean(data.enabled));
+      } catch {
+        setOn(!next);
+        setError("עדכון נכשל");
+      }
+    });
+  };
+
+  return (
+    <div className="gmail-sync-toggle">
+      <label className="gmail-sync-toggle-label">
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={disabled || pending}
+          onChange={toggle}
+        />
+        <span>סנכרון אוטומטי</span>
+      </label>
+      <p className="gmail-sync-toggle-hint">
+        כשפעיל — איסוף הוצאות מ־Gmail רץ ברקע (דורש CRON). מסך הייבוא הידני נשאר זמין.
+      </p>
+      {error ? <p className="form-error">{error}</p> : null}
+    </div>
   );
 }
 
@@ -88,12 +172,19 @@ export function SystemsGrid({
   systems,
   statuses = {},
   featuredOnly = false,
+  isAdmin = false,
+  gmailReplaceEmail = null,
+  gmailFlash = null,
 }: {
   systems: System[];
   statuses?: Record<string, AdapterStatus>;
   featuredOnly?: boolean;
+  isAdmin?: boolean;
+  gmailReplaceEmail?: string | null;
+  gmailFlash?: string | null;
 }) {
   const [selected, setSelected] = useState<System | null>(null);
+  const flash = gmailFlashMessage(gmailFlash);
   const featuredIds = new Set([
     "leumi",
     "rivhit",
@@ -125,8 +216,31 @@ export function SystemsGrid({
       })
     : undefined;
 
+  const selectedIsGmail = Boolean(
+    selected &&
+      (selected.adapterKey === "gmail" || selected.id === "gmail"),
+  );
+
   return (
     <>
+      {gmailReplaceEmail !== null && isAdmin ? (
+        <div className="gmail-replace-banner" role="alertdialog">
+          <p>
+            {gmailReplaceEmail
+              ? `כבר מחובר כ־${gmailReplaceEmail}, להחליף?`
+              : "כבר מחובר ל־Gmail, להחליף את החיבור?"}
+          </p>
+          <div className="form-actions" style={{ border: 0, paddingTop: 0, marginTop: 0 }}>
+            <Button asChild className="primary-action">
+              <a href="/api/auth/gmail/start?confirm=1">כן, החלף</a>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/systems">ביטול</Link>
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {flash ? <p className="adapter-status-message">{flash}</p> : null}
       <div className={`systems-grid${featuredOnly ? "" : " full-grid"}`}>
         {list.map((system) => {
           const Icon = systemIcons[system.id] || Layers;
@@ -135,6 +249,20 @@ export function SystemsGrid({
             state: "unrecognized" as const,
             message: "לא מזוהה — אין מתאם מקושר למערכת זו",
           };
+          const isGmail =
+            system.adapterKey === "gmail" || system.id === "gmail";
+          const showGmailConnect =
+            isAdmin &&
+            isGmail &&
+            (status.state === "missing_access" ||
+              status.state === "error" ||
+              status.state === "mock");
+          const showGmailDisconnect =
+            isAdmin &&
+            isGmail &&
+            (status.state === "connected" || status.state === "error");
+          const showGmailReconnect =
+            isAdmin && isGmail && status.state === "connected";
           return (
             <article
               key={system.id}
@@ -162,11 +290,15 @@ export function SystemsGrid({
                 {status.lastSynced
                   ? ` · סונכרן ${formatSyncedAt(status.lastSynced)}`
                   : null}
+                {isGmail && status.gmailSyncEnabled
+                  ? " · סנכרון אוטומטי"
+                  : null}
               </div>
               <div className="system-card-bottom">
                 <span
                   className={
-                    status.state === "unrecognized"
+                    status.state === "unrecognized" ||
+                    status.state === "missing_access"
                       ? "link-state missing"
                       : system.url
                         ? "link-state"
@@ -179,19 +311,61 @@ export function SystemsGrid({
                       ? "קישור למערכת"
                       : "ממתין לקישור"}
                 </span>
-                {system.url ? (
-                  <a
-                    href={system.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`פתיחת ${system.name} בכרטיסייה חדשה`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ArrowUpLeft size={19} />
-                  </a>
-                ) : (
-                  <span className="link-placeholder" aria-hidden />
-                )}
+                <div
+                  className="system-card-actions"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {showGmailConnect ? (
+                    <Button asChild size="sm" className="primary-action">
+                      <a href="/api/auth/gmail/start">התחבר</a>
+                    </Button>
+                  ) : null}
+                  {showGmailReconnect ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a
+                        href={`/api/auth/gmail/start?confirm=1`}
+                        onClick={(e) => {
+                          const email = status.accountEmail || "החשבון הנוכחי";
+                          if (
+                            !window.confirm(
+                              `כבר מחובר כ־${email}, להחליף?`,
+                            )
+                          ) {
+                            e.preventDefault();
+                          }
+                        }}
+                      >
+                        החלף
+                      </a>
+                    </Button>
+                  ) : null}
+                  {showGmailDisconnect ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a
+                        href="/api/auth/gmail/disconnect"
+                        onClick={(e) => {
+                          if (!window.confirm("לנתק את חיבור Gmail?")) {
+                            e.preventDefault();
+                          }
+                        }}
+                      >
+                        נתק
+                      </a>
+                    </Button>
+                  ) : null}
+                  {system.url ? (
+                    <a
+                      href={system.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`פתיחת ${system.name} בכרטיסייה חדשה`}
+                    >
+                      <ArrowUpLeft size={19} />
+                    </a>
+                  ) : (
+                    <span className="link-placeholder" aria-hidden />
+                  )}
+                </div>
               </div>
             </article>
           );
@@ -221,6 +395,12 @@ export function SystemsGrid({
                     <span>סטטוס</span>
                     <StatusBadge status={selectedStatus} />
                   </div>
+                  {selectedStatus.accountEmail ? (
+                    <div className="adapter-status-row">
+                      <span>חשבון</span>
+                      <strong dir="ltr">{selectedStatus.accountEmail}</strong>
+                    </div>
+                  ) : null}
                   <div className="adapter-status-row">
                     <span>סנכרון אחרון</span>
                     <strong>{formatSyncedAt(selectedStatus.lastSynced)}</strong>
@@ -232,12 +412,86 @@ export function SystemsGrid({
                   ) : null}
                 </>
               ) : null}
+              {isAdmin &&
+              selectedIsGmail &&
+              selectedStatus?.state === "connected" ? (
+                <GmailAutoSyncToggle
+                  key={`${selected.id}-${selectedStatus.gmailSyncEnabled ? "1" : "0"}`}
+                  enabled={Boolean(selectedStatus.gmailSyncEnabled)}
+                />
+              ) : null}
               <div className="form-actions">
-                {selectedStatus?.state === "imported" && (selected.adapterKey === "gmail" || selected.id === "gmail") ? (
-                  <Button asChild><Link href="/systems/gmail">צפייה בחשבוניות ועדכונים</Link></Button>
+                {isAdmin &&
+                (selected.adapterKey === "gmail" || selected.id === "gmail") &&
+                (selectedStatus?.state === "missing_access" ||
+                  selectedStatus?.state === "error" ||
+                  selectedStatus?.state === "mock") ? (
+                  <Button asChild className="primary-action">
+                    <a href="/api/auth/gmail/start">התחבר</a>
+                  </Button>
                 ) : null}
-                {selectedStatus?.state === "imported" && (selected.adapterKey === "timewatch" || selected.id === "timewatch") ? (
-                  <Button asChild><Link href="/systems/timewatch">צפייה בנתוני הנוכחות</Link></Button>
+                {isAdmin &&
+                (selected.adapterKey === "gmail" || selected.id === "gmail") &&
+                selectedStatus?.state === "connected" ? (
+                  <Button asChild variant="outline">
+                    <a
+                      href="/api/auth/gmail/start?confirm=1"
+                      onClick={(e) => {
+                        const email =
+                          selectedStatus.accountEmail || "החשבון הנוכחי";
+                        if (
+                          !window.confirm(`כבר מחובר כ־${email}, להחליף?`)
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      החלף חיבור
+                    </a>
+                  </Button>
+                ) : null}
+                {isAdmin &&
+                (selected.adapterKey === "gmail" || selected.id === "gmail") &&
+                (selectedStatus?.state === "connected" ||
+                  selectedStatus?.state === "error") ? (
+                  <Button asChild variant="outline">
+                    <a
+                      href="/api/auth/gmail/disconnect"
+                      onClick={(e) => {
+                        if (!window.confirm("לנתק את חיבור Gmail?")) {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      נתק
+                    </a>
+                  </Button>
+                ) : null}
+                {selectedStatus?.state === "connected" &&
+                (selected.adapterKey === "gmail" || selected.id === "gmail") ? (
+                  <>
+                    <Button asChild>
+                      <Link href="/systems/gmail">צפייה בהודעות</Link>
+                    </Button>
+                    {isAdmin ? (
+                      <Button asChild className="primary-action">
+                        <Link href="/systems/gmail/import">ייבוא הוצאות</Link>
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
+                {selectedStatus?.state === "imported" &&
+                (selected.adapterKey === "gmail" || selected.id === "gmail") ? (
+                  <Button asChild>
+                    <Link href="/systems/gmail">צפייה בחשבוניות ועדכונים</Link>
+                  </Button>
+                ) : null}
+                {selectedStatus?.state === "imported" &&
+                (selected.adapterKey === "timewatch" ||
+                  selected.id === "timewatch") ? (
+                  <Button asChild>
+                    <Link href="/systems/timewatch">צפייה בנתוני הנוכחות</Link>
+                  </Button>
                 ) : null}
                 {selected.url ? (
                   <Button asChild>
@@ -266,9 +520,11 @@ export function SystemsGrid({
 export function SystemsSection({
   systems,
   statuses = {},
+  isAdmin = false,
 }: {
   systems: System[];
   statuses?: Record<string, AdapterStatus>;
+  isAdmin?: boolean;
 }) {
   return (
     <section>
@@ -282,7 +538,12 @@ export function SystemsSection({
           <ArrowLeft size={16} />
         </Link>
       </div>
-      <SystemsGrid systems={systems} statuses={statuses} featuredOnly />
+      <SystemsGrid
+        systems={systems}
+        statuses={statuses}
+        featuredOnly
+        isAdmin={isAdmin}
+      />
     </section>
   );
 }

@@ -19,5 +19,21 @@ export async function getDataStore(): Promise<DataStore> {
   return new MockDataStore();
 }
 
+/**
+ * Service-role store for unattended jobs (cron). Bypasses RLS / no user session.
+ * Falls back to mock when Supabase service role is not configured.
+ */
+export async function getServiceDataStore(): Promise<DataStore> {
+  if (hasSupabaseEnv()) {
+    const { createServiceClient, hasServiceRole } = await import(
+      "@/lib/supabase/admin"
+    );
+    if (hasServiceRole()) {
+      return new SupabaseDataStore(createServiceClient());
+    }
+  }
+  return new MockDataStore();
+}
+
 export type { DataStore } from "./store";
 export type * from "./types";

@@ -14,8 +14,30 @@ export type ExpenseCategory =
   | "tolls"
   | "maintenance"
   | "office"
+  | "insurance"
+  | "software"
   | "other";
-export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
+
+export type ExpenseStatus =
+  | "ok"
+  | "needs_review"
+  | "missing_document"
+  | "duplicate";
+
+/** Informational anomaly rule id; null = none. Never auto-changes status. */
+export type ExpenseAnomalyFlag = "high_amount" | "unreviewed_recurring" | null;
+
+export type InvoiceStatus = "open" | "paid" | "overdue";
+
+/** Stored attendance row status (TimeWatch / sync). Absences may also be derived. */
+export type AttendanceStatus = "present" | "late" | "absent";
+
+export type ProjectStatus =
+  | "active"
+  | "on_hold"
+  | "completed"
+  | "inactive";
+
 export type AuditAction =
   | "create"
   | "update"
@@ -48,6 +70,8 @@ export interface Vehicle {
   year: number;
   notes: string;
   status: VehicleStatus;
+  /** Client assignment — mutually exclusive with an open employee assignment. */
+  clientId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +110,16 @@ export interface LegalCase {
   assignedTo: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Append-only note on a legal case. No edit/delete UI yet. */
+export interface LegalCaseNote {
+  id: string;
+  legalCaseId: string;
+  authorId: string | null;
+  authorName: string;
+  note: string;
+  createdAt: string;
 }
 
 export interface Property {
@@ -130,7 +164,18 @@ export interface Expense {
   description: string;
   vendor: string;
   employeeId: string | null;
-  status: string;
+  clientId: string | null;
+  projectId: string | null;
+  status: ExpenseStatus;
+  /** Origin of the expense row, e.g. "gmail" | "manual". */
+  source: string;
+  currency: string;
+  /** Calendar date the expense was incurred (YYYY-MM-DD). */
+  incurredOn: string | null;
+  /** Stable id from source system (e.g. Gmail message id). */
+  externalId: string | null;
+  /** Which anomaly rule fired, if any (informational only). */
+  anomalyFlag: ExpenseAnomalyFlag;
   createdAt: string;
   updatedAt: string;
 }
@@ -140,7 +185,39 @@ export interface Invoice {
   status: InvoiceStatus;
   amount: number;
   dueDate: string | null;
+  /** Free-text fallback when client_id is null. */
   clientName: string;
+  clientId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  status: ProjectStatus;
+  clientId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  workDate: string;
+  checkIn: string | null;
+  checkOut: string | null;
+  status: AttendanceStatus;
+  source: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -12,6 +12,15 @@ export type AdapterStatus = {
   state: AdapterStatusState;
   lastSynced?: string;
   message?: string;
+  /** Connected account email when known (e.g. Gmail). */
+  accountEmail?: string;
+  /** Gmail only: automatic expense sync toggle. */
+  gmailSyncEnabled?: boolean;
+};
+
+/** Optional context for adapters that need local roster data (e.g. TimeWatch mock). */
+export type FetchDataOptions = {
+  employees?: Array<{ id: string; fullName: string }>;
 };
 
 /** External-source adapter. Swap mock for a real implementation without UI changes. */
@@ -20,7 +29,7 @@ export interface SourceAdapter<T = unknown> {
   name: string;
   category: SystemCategory;
   checkStatus(): Promise<AdapterStatus>;
-  fetchData(): Promise<T[]>;
+  fetchData(options?: FetchDataOptions): Promise<T[]>;
 }
 
 export type ExpenseLikeRow = {
@@ -112,11 +121,15 @@ export type TollRow = {
 
 export type AttendanceRow = {
   id: string;
+  /** Set when generating against the live employee roster (sync path). */
+  employeeId?: string;
   employeeName: string;
   date: string;
   clockIn: string;
   clockOut: string;
   hours: number;
+  /** present | late — absences are omitted rows, detected later. */
+  status: "present" | "late";
 };
 
 export type PayrollRow = {

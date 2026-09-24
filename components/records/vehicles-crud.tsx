@@ -13,18 +13,29 @@ import {
   deleteVehicleAction,
   saveVehicleAction,
 } from "@/app/(dashboard)/actions";
-import type { Employee, Vehicle, VehicleStatus } from "@/lib/data/types";
+import type {
+  Client,
+  Employee,
+  Vehicle,
+  VehicleStatus,
+} from "@/lib/data/types";
 import { vehicleStatusLabels } from "@/lib/labels";
 
-type Row = Vehicle & { assigneeEmployeeId: string; assigneeName: string };
+type Row = Vehicle & {
+  assigneeEmployeeId: string;
+  assigneeClientId: string;
+  assigneeName: string;
+};
 
 export function VehiclesCrud({
   rows,
   employees,
+  clients,
   canWrite,
 }: {
   rows: Row[];
   employees: Employee[];
+  clients: Client[];
   canWrite: boolean;
 }) {
   return (
@@ -41,9 +52,11 @@ export function VehiclesCrud({
           year: new Date().getFullYear(),
           notes: "",
           status: "active" as VehicleStatus,
+          clientId: null,
           createdAt: "",
           updatedAt: "",
           assigneeEmployeeId: "",
+          assigneeClientId: "",
           assigneeName: "ללא שיוך",
         }) satisfies Row
       }
@@ -57,8 +70,10 @@ export function VehiclesCrud({
             year: Number(draft.year),
             notes: draft.notes,
             status: draft.status,
+            clientId: null,
           },
           draft.assigneeEmployeeId || null,
+          draft.assigneeClientId || null,
         );
       }}
       onDelete={async (id) => {
@@ -144,7 +159,13 @@ export function VehiclesCrud({
               <NativeSelect
                 value={draft.assigneeEmployeeId}
                 onChange={(e) =>
-                  setDraft({ ...draft, assigneeEmployeeId: e.target.value })
+                  setDraft({
+                    ...draft,
+                    assigneeEmployeeId: e.target.value,
+                    assigneeClientId: e.target.value
+                      ? ""
+                      : draft.assigneeClientId,
+                  })
                 }
               >
                 <option value="">ללא שיוך</option>
@@ -154,8 +175,31 @@ export function VehiclesCrud({
                   </option>
                 ))}
               </NativeSelect>
+            </label>
+            <label>
+              שיוך ללקוח
+              <NativeSelect
+                value={draft.assigneeClientId}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    assigneeClientId: e.target.value,
+                    assigneeEmployeeId: e.target.value
+                      ? ""
+                      : draft.assigneeEmployeeId,
+                  })
+                }
+              >
+                <option value="">ללא שיוך</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </NativeSelect>
               <small className="field-help">
-                שינוי שיוך סוגר את ההיסטוריה הקודמת ופותח רשומה חדשה.
+                ניתן לשייך לעובד או ללקוח — לא לשניהם יחד. שינוי שיוך עובד סוגר
+                את ההיסטוריה הקודמת ופותח רשומה חדשה.
               </small>
             </label>
           </>
@@ -182,7 +226,7 @@ export function VehiclesCrud({
               },
               {
                 key: "assignee",
-                header: "משויך לעובד",
+                header: "משויך ל",
                 cell: (v) => v.assigneeName,
               },
               {

@@ -1,5 +1,5 @@
 import type { SystemCategory } from "@/lib/data/types";
-import type { AdapterStatus, SourceAdapter } from "./types";
+import type { AdapterStatus, FetchDataOptions, SourceAdapter } from "./types";
 
 const DEFAULT_MESSAGE = "מקור מדומה — אין חיבור חי עדיין";
 
@@ -24,7 +24,7 @@ export function createMockAdapter<T>(config: {
     async checkStatus() {
       return { ...status };
     },
-    async fetchData() {
+    async fetchData(_options?: FetchDataOptions) {
       return [...config.rows];
     },
   };

@@ -5,9 +5,11 @@ import { getCurrentProfile } from "@/lib/auth/profile";
 import { canWrite, type WritableEntity } from "@/lib/auth/permissions";
 import { getDataStore } from "@/lib/data";
 import type {
+  ClientInput,
   EmployeeInput,
   FineInput,
   LegalCaseInput,
+  ProjectInput,
   PropertyInput,
   SystemInput,
   TaskInput,
@@ -46,15 +48,23 @@ export async function saveVehicleAction(
   id: string | null,
   input: VehicleInput,
   assigneeEmployeeId: string | null,
+  assigneeClientId: string | null = null,
 ) {
   await requireWrite("vehicles");
   const store = await getDataStore();
+
+  // Mutual exclusivity: employee OR client, not both.
+  const employeeId = assigneeClientId ? null : assigneeEmployeeId;
+  const clientId = employeeId ? null : assigneeClientId;
+
+  const vehicleInput: VehicleInput = { ...input, clientId };
   const vehicle = id
-    ? await store.updateVehicle(id, input)
-    : await store.createVehicle(input);
-  await store.setVehicleAssignment(vehicle.id, assigneeEmployeeId);
+    ? await store.updateVehicle(id, vehicleInput)
+    : await store.createVehicle(vehicleInput);
+  await store.setVehicleAssignment(vehicle.id, employeeId);
   revalidatePath("/vehicles");
   revalidatePath("/employees");
+  revalidatePath("/clients");
   revalidatePath("/");
 }
 
@@ -156,4 +166,47 @@ export async function deleteSystemAction(id: string) {
   await store.deleteSystem(id);
   revalidatePath("/systems");
   revalidatePath("/");
+}
+
+export async function saveClientAction(id: string | null, input: ClientInput) {
+  await requireWrite("clients");
+  const store = await getDataStore();
+  if (id) await store.updateClient(id, input);
+  else await store.createClient(input);
+  revalidatePath("/clients");
+  revalidatePath("/projects");
+  revalidatePath("/collections");
+  revalidatePath("/expenses");
+  revalidatePath("/vehicles");
+}
+
+export async function deleteClientAction(id: string) {
+  await requireWrite("clients");
+  const store = await getDataStore();
+  await store.deleteClient(id);
+  revalidatePath("/clients");
+  revalidatePath("/projects");
+  revalidatePath("/collections");
+  revalidatePath("/expenses");
+  revalidatePath("/vehicles");
+}
+
+export async function saveProjectAction(
+  id: string | null,
+  input: ProjectInput,
+) {
+  await requireWrite("projects");
+  const store = await getDataStore();
+  if (id) await store.updateProject(id, input);
+  else await store.createProject(input);
+  revalidatePath("/projects");
+  revalidatePath("/expenses");
+}
+
+export async function deleteProjectAction(id: string) {
+  await requireWrite("projects");
+  const store = await getDataStore();
+  await store.deleteProject(id);
+  revalidatePath("/projects");
+  revalidatePath("/expenses");
 }

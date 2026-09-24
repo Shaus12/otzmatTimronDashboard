@@ -22,10 +22,17 @@ export function SystemsCrud({
   systems,
   statuses,
   canWrite,
+  isAdmin = false,
+  gmailReplaceEmail = null,
+  gmailFlash = null,
 }: {
   systems: System[];
   statuses: Record<string, AdapterStatus>;
   canWrite: boolean;
+  isAdmin?: boolean;
+  /** When set, show replace-connection confirmation (from OAuth start guard). */
+  gmailReplaceEmail?: string | null;
+  gmailFlash?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(ALL);
@@ -176,7 +183,13 @@ export function SystemsCrud({
 
           {filtered.length ? (
             <div className="systems-manage">
-              <SystemsGrid systems={filtered} statuses={statuses} />
+              <SystemsGrid
+                systems={filtered}
+                statuses={statuses}
+                isAdmin={isAdmin}
+                gmailReplaceEmail={gmailReplaceEmail}
+                gmailFlash={gmailFlash}
+              />
               {write ? (
                 <div className="systems-edit-list">
                   {filtered.map((system) => (

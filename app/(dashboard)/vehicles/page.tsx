@@ -9,9 +9,10 @@ import { VehiclesCrud } from "@/components/records/vehicles-crud";
 export default async function VehiclesPage() {
   const store = await getDataStore();
   const profile = await getCurrentProfile();
-  const [vehicles, employees, assignments] = await Promise.all([
+  const [vehicles, employees, clients, assignments] = await Promise.all([
     store.getVehicles(),
     store.getEmployees(),
+    store.getClients(),
     store.getVehicleAssignments(),
   ]);
 
@@ -21,15 +22,22 @@ export default async function VehiclesPage() {
       .map((a) => [a.vehicleId, a.employeeId]),
   );
   const employeeById = new Map(employees.map((e) => [e.id, e]));
+  const clientById = new Map(clients.map((c) => [c.id, c]));
 
   const rows = vehicles.map((v) => {
     const employeeId = currentByVehicle.get(v.id) ?? "";
+    const clientId = !employeeId ? (v.clientId ?? "") : "";
+    let assigneeName = "ללא שיוך";
+    if (employeeId) {
+      assigneeName = `עובד · ${employeeById.get(employeeId)?.fullName ?? "—"}`;
+    } else if (clientId) {
+      assigneeName = `לקוח · ${clientById.get(clientId)?.name ?? "—"}`;
+    }
     return {
       ...v,
       assigneeEmployeeId: employeeId,
-      assigneeName: employeeId
-        ? (employeeById.get(employeeId)?.fullName ?? "ללא שיוך")
-        : "ללא שיוך",
+      assigneeClientId: clientId,
+      assigneeName,
     };
   });
 
@@ -42,6 +50,7 @@ export default async function VehiclesPage() {
       <VehiclesCrud
         rows={rows}
         employees={employees}
+        clients={clients}
         canWrite={canWrite(profile?.role, "vehicles")}
       />
     </PageShell>

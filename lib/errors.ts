@@ -75,6 +75,15 @@ export function toUserFacingError(error: unknown): string {
   if (lower.includes("check constraint")) {
     return "אחד מהערכים אינו תקין. בדקו את הפרטים ונסו שוב.";
   }
+  if (
+    lower.includes("could not find") &&
+    lower.includes("column")
+  ) {
+    return "חסרה עמודת מסד נתונים (ייתכן שמיגרציה לא הורצה). פנו למנהל המערכת.";
+  }
+  if (lower.includes("schema cache")) {
+    return "סכמת המסד לא מעודכנת. ודאו שכל המיגרציות הורצו.";
+  }
 
   if (looksHebrew(raw) && !looksTechnical(raw)) {
     return raw;

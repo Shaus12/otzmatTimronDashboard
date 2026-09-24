@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -140,7 +141,11 @@ export function LegalCrud({
                 key: "name",
                 header: "שם / נושא",
                 className: "record-name",
-                cell: (c) => `${c.title} · ${c.caseNumber}`,
+                cell: (c) => (
+                  <Link href={`/legal/${c.id}`} className="text-button">
+                    {c.title} · {c.caseNumber}
+                  </Link>
+                ),
               },
               {
                 key: "detail",

@@ -1,33 +1,42 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AttendanceRecordInput,
+  ClientInput,
   DataStore,
   EmployeeInput,
   ExpenseInput,
   FineInput,
   InvoiceInput,
   LegalCaseInput,
+  LegalCaseNoteInput,
   PaymentInput,
+  ProjectInput,
   PropertyInput,
   SystemInput,
   TaskInput,
   VehicleInput,
 } from "./store";
 import type {
+  AttendanceRecord,
   AuditLog,
+  Client,
   Employee,
   Expense,
   Fine,
   HomeKpis,
   Invoice,
   LegalCase,
+  LegalCaseNote,
   Payment,
   ProfileOption,
+  Project,
   Property,
   System,
   Task,
   Vehicle,
   VehicleAssignment,
 } from "./types";
+import { detectExpenseAnomaly } from "@/lib/expenses/anomalies";
 import { throwDbError, toUserFacingError } from "@/lib/errors";
 
 type Row = Record<string, unknown>;
@@ -42,6 +51,8 @@ const SOFT_DELETE_TABLES = new Set([
   "systems",
   "expenses",
   "payments",
+  "clients",
+  "projects",
 ]);
 
 function requireData<T>(data: T | null, error: { message: string } | null): T {
@@ -82,6 +93,7 @@ function mapVehicle(row: Row): Vehicle {
     year: Number(row.year ?? 0),
     notes: String(row.notes ?? ""),
     status: row.status as Vehicle["status"],
+    clientId: (row.client_id as string | null) ?? null,
     createdAt: String(row.created_at ?? ""),
     updatedAt: String(row.updated_at ?? ""),
   };
@@ -95,6 +107,7 @@ function vehicleRow(input: VehicleInput): Row {
     year: input.year,
     notes: input.notes,
     status: input.status,
+    client_id: input.clientId,
   };
 }
 
@@ -147,6 +160,20 @@ function mapLegal(row: Row): LegalCase {
     assignedTo: (row.assigned_to as string | null) ?? null,
     createdAt: String(row.created_at ?? ""),
     updatedAt: String(row.updated_at ?? ""),
+  };
+}
+
+function mapLegalCaseNote(
+  row: Row,
+  authorName = "",
+): LegalCaseNote {
+  return {
+    id: String(row.id),
+    legalCaseId: String(row.legal_case_id),
+    authorId: (row.author_id as string | null) ?? null,
+    authorName: authorName || "—",
+    note: String(row.note ?? ""),
+    createdAt: String(row.created_at ?? ""),
   };
 }
 
@@ -231,6 +258,11 @@ function systemRow(input: SystemInput): Row {
 }
 
 function mapExpense(row: Row): Expense {
+  const rawFlag = row.anomaly_flag;
+  const anomalyFlag =
+    rawFlag === "high_amount" || rawFlag === "unreviewed_recurring"
+      ? rawFlag
+      : null;
   return {
     id: String(row.id),
     category: row.category as Expense["category"],
@@ -239,22 +271,52 @@ function mapExpense(row: Row): Expense {
     description: String(row.description ?? ""),
     vendor: String(row.vendor ?? ""),
     employeeId: (row.employee_id as string | null) ?? null,
-    status: String(row.status ?? ""),
+    clientId: (row.client_id as string | null) ?? null,
+    projectId: (row.project_id as string | null) ?? null,
+    status: String(row.status ?? "") as Expense["status"],
+    source: String(row.source ?? ""),
+    currency: String(row.currency ?? "ILS"),
+    incurredOn: (row.incurred_on as string | null) ?? null,
+    externalId: (row.external_id as string | null) ?? null,
+    anomalyFlag,
     createdAt: String(row.created_at ?? ""),
     updatedAt: String(row.updated_at ?? ""),
   };
 }
 
 function expenseRow(input: ExpenseInput): Row {
-  return {
+  const row: Row = {
     category: input.category,
     amount: input.amount,
     vehicle_id: input.vehicleId,
     description: input.description,
     vendor: input.vendor,
     employee_id: input.employeeId,
+    client_id: input.clientId,
+    project_id: input.projectId,
     status: input.status,
+    source: input.source,
+    currency: input.currency,
+    incurred_on: input.incurredOn,
   };
+  // Only send when set — live DB may not have these columns until migrations run.
+  if (input.externalId != null && input.externalId !== "") {
+    row.external_id = input.externalId;
+  }
+  if (input.anomalyFlag != null) {
+    row.anomaly_flag = input.anomalyFlag;
+  }
+  return row;
+}
+
+function isMissingColumnError(
+  error: { message?: string } | null | undefined,
+): boolean {
+  const m = (error?.message ?? "").toLowerCase();
+  return (
+    (m.includes("could not find") && m.includes("column")) ||
+    m.includes("schema cache")
+  );
 }
 
 function mapInvoice(row: Row): Invoice {
@@ -264,6 +326,7 @@ function mapInvoice(row: Row): Invoice {
     amount: Number(row.amount ?? 0),
     dueDate: (row.due_date as string | null) ?? null,
     clientName: String(row.client_name ?? ""),
+    clientId: (row.client_id as string | null) ?? null,
     createdAt: String(row.created_at ?? ""),
     updatedAt: String(row.updated_at ?? ""),
   };
@@ -275,6 +338,45 @@ function invoiceRow(input: InvoiceInput): Row {
     amount: input.amount,
     due_date: input.dueDate,
     client_name: input.clientName,
+    client_id: input.clientId,
+  };
+}
+
+function mapClient(row: Row): Client {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    phone: String(row.phone ?? ""),
+    email: String(row.email ?? ""),
+    createdAt: String(row.created_at ?? ""),
+    updatedAt: String(row.updated_at ?? ""),
+  };
+}
+
+function clientRow(input: ClientInput): Row {
+  return {
+    name: input.name,
+    phone: input.phone,
+    email: input.email,
+  };
+}
+
+function mapProject(row: Row): Project {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    status: row.status as Project["status"],
+    clientId: (row.client_id as string | null) ?? null,
+    createdAt: String(row.created_at ?? ""),
+    updatedAt: String(row.updated_at ?? ""),
+  };
+}
+
+function projectRow(input: ProjectInput): Row {
+  return {
+    name: input.name,
+    status: input.status,
+    client_id: input.clientId,
   };
 }
 
@@ -287,6 +389,41 @@ function mapPayment(row: Row): Payment {
     method: String(row.method ?? ""),
     createdAt: String(row.created_at ?? ""),
     updatedAt: String(row.updated_at ?? ""),
+  };
+}
+
+function normalizeTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const m = value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return value;
+  const hh = String(Number(m[1])).padStart(2, "0");
+  const mm = m[2];
+  const ss = m[3] ?? "00";
+  return `${hh}:${mm}:${ss}`;
+}
+
+function mapAttendance(row: Row): AttendanceRecord {
+  return {
+    id: String(row.id),
+    employeeId: String(row.employee_id),
+    workDate: String(row.work_date ?? "").slice(0, 10),
+    checkIn: normalizeTime((row.check_in as string | null) ?? null),
+    checkOut: normalizeTime((row.check_out as string | null) ?? null),
+    status: row.status as AttendanceRecord["status"],
+    source: String(row.source ?? ""),
+    createdAt: String(row.created_at ?? ""),
+    updatedAt: String(row.updated_at ?? ""),
+  };
+}
+
+function attendanceRow(input: AttendanceRecordInput): Row {
+  return {
+    employee_id: input.employeeId,
+    work_date: input.workDate.slice(0, 10),
+    check_in: normalizeTime(input.checkIn),
+    check_out: normalizeTime(input.checkOut),
+    status: input.status,
+    source: input.source,
   };
 }
 
@@ -547,6 +684,65 @@ export class SupabaseDataStore implements DataStore {
     await this.softDelete("legal_cases", id);
   }
 
+  async getLegalCaseNotes(legalCaseId: string): Promise<LegalCaseNote[]> {
+    const { data, error } = await this.supabase
+      .from("legal_case_notes")
+      .select("*")
+      .eq("legal_case_id", legalCaseId)
+      .order("created_at", { ascending: false });
+    if (error) throwDbError(error);
+    const rows = data ?? [];
+    const authorIds = [
+      ...new Set(
+        rows
+          .map((r) => r.author_id as string | null)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const nameById = new Map<string, string>();
+    if (authorIds.length) {
+      const { data: profiles, error: profileError } = await this.supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", authorIds);
+      if (profileError) throwDbError(profileError);
+      for (const p of profiles ?? []) {
+        nameById.set(String(p.id), String(p.full_name ?? "") || "—");
+      }
+    }
+    return rows.map((row) =>
+      mapLegalCaseNote(
+        row,
+        row.author_id ? (nameById.get(String(row.author_id)) ?? "—") : "—",
+      ),
+    );
+  }
+
+  async createLegalCaseNote(
+    input: LegalCaseNoteInput,
+  ): Promise<LegalCaseNote> {
+    const { data, error } = await this.supabase
+      .from("legal_case_notes")
+      .insert({
+        legal_case_id: input.legalCaseId,
+        author_id: input.authorId,
+        note: input.note,
+      })
+      .select("*")
+      .single();
+    const row = requireData(data, error);
+    let authorName = "—";
+    if (input.authorId) {
+      const { data: profile } = await this.supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", input.authorId)
+        .maybeSingle();
+      authorName = String(profile?.full_name ?? "") || "—";
+    }
+    return mapLegalCaseNote(row, authorName);
+  }
+
   async getProperties(): Promise<Property[]> {
     const { data, error } = await this.list("properties").order("address");
     if (error) throwDbError(error);
@@ -660,6 +856,80 @@ export class SupabaseDataStore implements DataStore {
     await this.softDelete("systems", id);
   }
 
+  async getClients(): Promise<Client[]> {
+    const { data, error } = await this.list("clients").order("name");
+    if (error) throwDbError(error);
+    return (data ?? []).map(mapClient);
+  }
+
+  async getClient(id: string): Promise<Client | null> {
+    const { data, error } = await this.list("clients").eq("id", id).maybeSingle();
+    if (error) throwDbError(error);
+    return data ? mapClient(data) : null;
+  }
+
+  async createClient(input: ClientInput): Promise<Client> {
+    const { data, error } = await this.supabase
+      .from("clients")
+      .insert(clientRow(input))
+      .select("*")
+      .single();
+    return mapClient(requireData(data, error));
+  }
+
+  async updateClient(id: string, input: ClientInput): Promise<Client> {
+    const { data, error } = await this.supabase
+      .from("clients")
+      .update(clientRow(input))
+      .eq("id", id)
+      .is("deleted_at", null)
+      .select("*")
+      .single();
+    return mapClient(requireData(data, error));
+  }
+
+  async deleteClient(id: string): Promise<void> {
+    await this.softDelete("clients", id);
+  }
+
+  async getProjects(): Promise<Project[]> {
+    const { data, error } = await this.list("projects").order("name");
+    if (error) throwDbError(error);
+    return (data ?? []).map(mapProject);
+  }
+
+  async getProject(id: string): Promise<Project | null> {
+    const { data, error } = await this.list("projects")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throwDbError(error);
+    return data ? mapProject(data) : null;
+  }
+
+  async createProject(input: ProjectInput): Promise<Project> {
+    const { data, error } = await this.supabase
+      .from("projects")
+      .insert(projectRow(input))
+      .select("*")
+      .single();
+    return mapProject(requireData(data, error));
+  }
+
+  async updateProject(id: string, input: ProjectInput): Promise<Project> {
+    const { data, error } = await this.supabase
+      .from("projects")
+      .update(projectRow(input))
+      .eq("id", id)
+      .is("deleted_at", null)
+      .select("*")
+      .single();
+    return mapProject(requireData(data, error));
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    await this.softDelete("projects", id);
+  }
+
   async getExpenses(): Promise<Expense[]> {
     const { data, error } = await this.list("expenses").order("created_at", {
       ascending: false,
@@ -669,23 +939,86 @@ export class SupabaseDataStore implements DataStore {
   }
 
   async createExpense(input: ExpenseInput): Promise<Expense> {
-    const { data, error } = await this.supabase
+    const existing = await this.getExpenses();
+    const anomalyFlag = detectExpenseAnomaly(input, existing);
+    const row = expenseRow({ ...input, anomalyFlag });
+
+    let { data, error } = await this.supabase
       .from("expenses")
-      .insert(expenseRow(input))
+      .insert(row)
       .select("*")
       .single();
+
+    // Soft-degrade if optional migration columns are not applied yet.
+    if (error && isMissingColumnError(error) && "anomaly_flag" in row) {
+      delete row.anomaly_flag;
+      ({ data, error } = await this.supabase
+        .from("expenses")
+        .insert(row)
+        .select("*")
+        .single());
+    }
+    if (error && isMissingColumnError(error) && "external_id" in row) {
+      delete row.external_id;
+      ({ data, error } = await this.supabase
+        .from("expenses")
+        .insert(row)
+        .select("*")
+        .single());
+    }
+
     return mapExpense(requireData(data, error));
   }
 
   async updateExpense(id: string, input: ExpenseInput): Promise<Expense> {
-    const { data, error } = await this.supabase
+    const row = expenseRow(input);
+
+    let { data, error } = await this.supabase
       .from("expenses")
-      .update(expenseRow(input))
+      .update(row)
       .eq("id", id)
       .is("deleted_at", null)
       .select("*")
       .single();
+
+    if (error && isMissingColumnError(error) && "anomaly_flag" in row) {
+      delete row.anomaly_flag;
+      ({ data, error } = await this.supabase
+        .from("expenses")
+        .update(row)
+        .eq("id", id)
+        .is("deleted_at", null)
+        .select("*")
+        .single());
+    }
+    if (error && isMissingColumnError(error) && "external_id" in row) {
+      delete row.external_id;
+      ({ data, error } = await this.supabase
+        .from("expenses")
+        .update(row)
+        .eq("id", id)
+        .is("deleted_at", null)
+        .select("*")
+        .single());
+    }
+
     return mapExpense(requireData(data, error));
+  }
+
+  /**
+   * Set or clear anomaly_flag only. No-ops soft if the column is not migrated yet.
+   */
+  async setExpenseAnomalyFlag(
+    id: string,
+    anomalyFlag: Expense["anomalyFlag"],
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .from("expenses")
+      .update({ anomaly_flag: anomalyFlag })
+      .eq("id", id)
+      .is("deleted_at", null);
+    if (error && isMissingColumnError(error)) return;
+    if (error) throwDbError(error);
   }
 
   async deleteExpense(id: string): Promise<void> {
@@ -754,6 +1087,28 @@ export class SupabaseDataStore implements DataStore {
 
   async deletePayment(id: string): Promise<void> {
     await this.softDelete("payments", id);
+  }
+
+  async getAttendanceRecords(): Promise<AttendanceRecord[]> {
+    const { data, error } = await this.supabase
+      .from("attendance_records")
+      .select("*")
+      .order("work_date", { ascending: false });
+    if (error) throwDbError(error);
+    return (data ?? []).map(mapAttendance);
+  }
+
+  async upsertAttendanceRecords(
+    inputs: AttendanceRecordInput[],
+  ): Promise<AttendanceRecord[]> {
+    if (!inputs.length) return [];
+    const rows = inputs.map(attendanceRow);
+    const { data, error } = await this.supabase
+      .from("attendance_records")
+      .upsert(rows, { onConflict: "employee_id,work_date" })
+      .select("*");
+    if (error) throwDbError(error);
+    return (data ?? []).map(mapAttendance);
   }
 
   async getAuditLogs(): Promise<AuditLog[]> {

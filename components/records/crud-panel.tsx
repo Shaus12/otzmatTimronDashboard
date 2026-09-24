@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { toUserFacingError } from "@/lib/errors";
 
@@ -24,6 +25,8 @@ type CrudPanelProps<T extends { id: string }> = {
   emptyDraft: () => T;
   onSave: (draft: T) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** Soft-delete confirmation copy; defaults to generic soft-delete text. */
+  deleteDescription?: string;
   children: (args: {
     onEdit: (row: T) => void;
     onDelete: (row: T) => void;
@@ -31,7 +34,9 @@ type CrudPanelProps<T extends { id: string }> = {
   }) => ReactNode;
 };
 
-export function CrudPanel<T extends { id: string; name?: string; title?: string; fullName?: string }>({
+export function CrudPanel<
+  T extends { id: string; name?: string; title?: string; fullName?: string },
+>({
   canWrite,
   addLabel,
   rows,
@@ -39,6 +44,7 @@ export function CrudPanel<T extends { id: string; name?: string; title?: string;
   emptyDraft,
   onSave,
   onDelete,
+  deleteDescription = "הרשומה תסומן כמחוקה ולא תופיע ברשימות.",
   children,
 }: CrudPanelProps<T>) {
   const [draft, setDraft] = useState<T | null>(null);
@@ -70,6 +76,7 @@ export function CrudPanel<T extends { id: string; name?: string; title?: string;
       setRemove(null);
     } catch (e) {
       setError(toUserFacingError(e));
+      throw e;
     } finally {
       setBusy(false);
     }
@@ -128,7 +135,7 @@ export function CrudPanel<T extends { id: string; name?: string; title?: string;
           {draft ? (
             <form onSubmit={save} className="record-form">
               {renderForm({ draft, setDraft, busy })}
-              {error ? (
+              {error && !remove ? (
                 <p className="form-error" role="alert">
                   {error}
                 </p>
@@ -156,42 +163,22 @@ export function CrudPanel<T extends { id: string; name?: string; title?: string;
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <ConfirmDialog
         open={!!remove}
         onOpenChange={(open) => {
-          if (!open && !busy) setRemove(null);
+          if (!open && !busy) {
+            setRemove(null);
+            setError("");
+          }
         }}
-      >
-        <DialogContent dir="rtl" className="record-dialog">
-          <DialogHeader>
-            <DialogTitle>למחוק את ״{title}״?</DialogTitle>
-            <DialogDescription>
-              הרשומה תסומן כמחוקה ולא תופיע ברשימות.
-            </DialogDescription>
-          </DialogHeader>
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-          <div className="form-actions">
-            <Button
-              variant="destructive"
-              disabled={busy}
-              onClick={confirmDelete}
-            >
-              {busy ? "מוחק…" : "מחיקה"}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => setRemove(null)}
-            >
-              ביטול
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        title={`למחוק את ״${title}״?`}
+        description={deleteDescription}
+        confirmLabel="מחיקה"
+        tone="destructive"
+        busy={busy}
+        error={remove ? error || null : null}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }
