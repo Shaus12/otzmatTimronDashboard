@@ -3,14 +3,15 @@ import { getCurrentProfile } from "@/lib/auth/profile";
 import { getAdapterStatusesForSystems } from "@/lib/adapters";
 import { getDataStore } from "@/lib/data";
 import { buildAttentionQueue } from "@/lib/attention/queue";
-import { navLabels, pageDescriptions } from "@/lib/labels";
+import { navLabels } from "@/lib/labels";
 import { PageShell } from "@/components/layout/page-shell";
-import { PageHeading } from "@/components/layout/page-heading";
 import { KpiCards } from "@/components/home/kpi-cards";
 import { SystemsSection } from "@/components/home/systems-section";
 import { OpenTasksPanel } from "@/components/home/open-tasks-panel";
 import { AttentionPanel } from "@/components/home/attention-panel";
 import { QuickLinks } from "@/components/home/quick-links";
+import { CommandHero } from "@/components/home/command-hero";
+import { BusinessIntelligence } from "@/components/home/business-intelligence";
 import { TimewatchSummary } from "@/components/home/timewatch-summary";
 import { readTimewatchSnapshot } from "@/lib/integrations/timewatch-snapshot";
 import { readGmailSnapshot } from "@/lib/integrations/gmail-snapshot";
@@ -30,39 +31,15 @@ export default async function HomePage() {
     store.getInvoices(),
   ]);
   const attentionItems = buildAttentionQueue(expenses, fines, invoices);
-  const featuredKeys = new Set([
-    "bank_leumi",
-    "rivhit",
-    "priority",
-    "timewatch",
-    "gmail",
-    "whatsapp",
-  ]);
-  const featuredIds = new Set([
-    "leumi",
-    "rivhit",
-    "priority",
-    "timewatch",
-    "gmail",
-    "whatsapp",
-  ]);
-  const featured = systems.filter(
-    (s) =>
-      (s.adapterKey && featuredKeys.has(s.adapterKey)) ||
-      featuredIds.has(s.id),
-  );
-  const statuses = await getAdapterStatusesForSystems(featured);
+  const statuses = await getAdapterStatusesForSystems(systems);
   const timewatch = await readTimewatchSnapshot();
   const gmail = await readGmailSnapshot();
 
   return (
     <PageShell section={navLabels.home}>
-      <PageHeading
-        title="מבט אחד. הכול בשליטה."
-        description={pageDescriptions.home}
-        badge={
-          process.env.NEXT_PUBLIC_SUPABASE_URL ? "מחובר ל־Supabase" : "נתוני דמו"
-        }
+      <CommandHero
+        badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "נתונים מחוברים" : "נתוני דמו"}
+        attentionCount={attentionItems.length}
       />
 
       <KpiCards
@@ -99,6 +76,13 @@ export default async function HomePage() {
         ]}
       />
 
+      <BusinessIntelligence
+        expenses={expenses}
+        fines={fines}
+        invoices={invoices}
+        statuses={statuses}
+      />
+
       {timewatch.snapshot ? <TimewatchSummary snapshot={timewatch.snapshot}/> : null}
       {gmail.snapshot ? <GmailSummary snapshot={gmail.snapshot}/> : null}
 
@@ -114,13 +98,6 @@ export default async function HomePage() {
         <aside className="right-column">
           <AttentionPanel items={attentionItems} />
           <OpenTasksPanel tasks={tasks} />
-          <section className="setup-note">
-            <h3>שכבת נתונים</h3>
-            <p>
-              כל המסכים קוראים דרך ממשק DataStore. עם משתני הסביבה של Supabase
-              הנתונים מגיעים מהמסד האמיתי לפי הרשאות הפרופיל.
-            </p>
-          </section>
         </aside>
       </div>
     </PageShell>
